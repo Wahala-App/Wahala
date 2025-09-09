@@ -1,18 +1,20 @@
-import LoginComponent from "@/app/login/login";
-import MapImage from "@/app/ui/LoginMap";
+"use client";
 
+import { useAuth } from './contexts/AuthContext';
+import { redirect } from 'next/navigation';
+import HomeComponent from './home/home';
 
 export default function Home() {
-  return (
-      <div className="flex min-h-screen">
-          <div className="flex-[0.6] flex items-center justify-center">
-              <div className="w-4/5">
-                  <LoginComponent/>
-              </div>
-          </div>
-          <div className="flex-[0.4]">
-              <MapImage/>
-          </div>
-      </div>
-          );
+    const { isAuthenticated, isLoaded } = useAuth();
+    
+    // Wait for auth state to load before making decisions
+    if (!isLoaded) {
+        return <div>Loading...</div>; // or a proper loading component
+    }
+    
+    if (isAuthenticated) {
+        return <HomeComponent />;
+    } else {
+        redirect('/login');
+    }
 }

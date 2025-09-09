@@ -1,8 +1,20 @@
+"use client";
+
 import TextInput from "@/app/ui/TextInput";
 import {Button, SocialButton} from "@/app/ui/button";
 import Image from "next/image";
+import { useAuth } from "@/app/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function LoginComponent() {
+    const { login } = useAuth();
+    const router = useRouter();
+
+    const handleCreateAccount = () => {
+        login();
+        router.push('/');
+    };
+
     return (
         <>
             <div className="text-4xl font-bold mb-8"> {/*Line by Itself*/}
@@ -19,7 +31,13 @@ export default function LoginComponent() {
             </div>
 
             <div className="mb-8">
-                <Button type="submit" className={"rounded-3xl"}>Create Account</Button>
+                <Button 
+                    type="submit" 
+                    className={"rounded-3xl"}
+                    onClick={handleCreateAccount}
+                >
+                    Create Account
+                </Button>
             </div>
 
             <div>
