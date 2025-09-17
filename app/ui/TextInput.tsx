@@ -2,12 +2,12 @@ import Image from "next/image";
 
 interface TextInputProps {
     title: string;
-    type: "email" | "password";
+    type: "email" | "password" | "search";
     placeholder: string;
 }
 
 export default function TextInput(props: TextInputProps) {
-    const iconURL = props.type === "email" ? "/userEmail.svg" : "password.svg";
+    const iconURL = props.type === "email" ? "userEmail.svg" : "password.svg";
     
     return (
         <div className="grid grid-rows-2 gap-4 mb-8">
