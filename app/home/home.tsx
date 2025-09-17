@@ -15,7 +15,9 @@ export default function HomeComponent() {
                     </div>
                 </div>
                 <div className="flex-[0.6]">
-                    <MapComponent/>
+                    <MapComponent>
+                        <></>
+                    </MapComponent>
                 </div>
             </div>
         </div>
