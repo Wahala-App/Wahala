@@ -1,6 +1,6 @@
 "use client";
 
-import TextInput from "@/app/ui/TextInput";
+import { TextInput } from "@/app/ui/TextInput";
 import {Button, SocialButton} from "@/app/ui/button";
 import Image from "next/image";
 import { useAuth } from "@/app/contexts/AuthContext";

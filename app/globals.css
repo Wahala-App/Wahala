@@ -41,6 +41,7 @@ body {
     background-color: var(--background); /* Card background color */
     border-radius: 8px; /* Rounded corners for the card */
     padding: 20px; /* Spacing inside the card */
+    gap: 20px;
     box-shadow: 0 4px 8px var(--shadow); /* Dark mode aware shadow */
     transition: box-shadow 0.3s ease-in-out;
 }
@@ -51,4 +52,10 @@ body {
     padding: 24px;
     box-shadow: 0 8px 16px var(--shadow-lg); /* Larger dark mode aware shadow */
     transition: box-shadow 0.3s ease-in-out;
+}
+
+.details-container {
+    overflow-y: auto;
+    height: 20vh;
+    padding: 10px;
 }
