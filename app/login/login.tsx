@@ -1,8 +1,9 @@
 "use client";
 
-import { TextInput } from "@/app/ui/TextInput";
-import {Button, SocialButton} from "@/app/ui/button";
+import { TitledTextInput } from "@/app/ui/TextInput";
+import { PillButton, DefaultButton, ButtonProps} from "@/app/ui/button";
 import Image from "next/image";
+import clsx from "clsx";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -26,18 +27,18 @@ export default function LoginComponent() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <TextInput title={"Email Address"} type={"email"} placeholder={"Email Address"} />
-                <TextInput title={"Password"} type={"password"} placeholder={"Password"} />
+                <TitledTextInput title={"Email Address"} type={"email"} placeholder={"Email Address"} />
+                <TitledTextInput title={"Password"} type={"password"} placeholder={"Password"} />
             </div>
 
             <div className="mb-8">
-                <Button 
+                <PillButton 
                     type="submit" 
                     className={"rounded-3xl"}
                     onClick={handleCreateAccount}
                 >
                     Create Account
-                </Button>
+                </PillButton>
             </div>
 
             <div>
@@ -45,16 +46,27 @@ export default function LoginComponent() {
             </div>
 
             <div className="flex gap-15 mt-6">
-                <SocialButton>
+                <RoundIconLoginButton>
                     <Image src={"/google.svg"} alt={"Google Logo"} width={30} height={25} />
-                </SocialButton>
-                <SocialButton>
-                    <Image src={"/apple.svg"} alt={"Apple Logo"}  width={30} height={25}/>
-                </SocialButton>
-                <SocialButton>
+                </RoundIconLoginButton>
+                <RoundIconLoginButton>
+                   <Image src={"/apple.svg"} alt={"Apple Logo"}  width={30} height={25}/>
+                </RoundIconLoginButton>
+                <RoundIconLoginButton>
                     <Image src={"/facebook.svg"} alt={"Facebook Logo"} width={30} height={25}/>
-                </SocialButton>
+                </RoundIconLoginButton>
             </div>
         </>
     );
+}
+
+function RoundIconLoginButton({ children, ...otherProps }: ButtonProps) {
+    return (
+        <DefaultButton
+            {...otherProps}
+            className={clsx("w-12 h-12 rounded-full hover:bg-hover flex items-center justify-center text-lg")}
+        >
+            {children}
+        </DefaultButton>
+    )
 }

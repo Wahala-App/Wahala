@@ -6,7 +6,7 @@ interface TextInputProps {
     placeholder: string;
 }
 
-export function TextInput(props: TextInputProps) {
+export function TitledTextInput(props: TextInputProps) {
     const iconURL = props.type === "email" ? "userEmail.svg" : "password.svg";
     
     return (
@@ -27,7 +27,7 @@ export function TextInput(props: TextInputProps) {
     )
 }
 
-export function TextInputWithoutTitle(props: TextInputProps) {
+export function TextInput(props: TextInputProps) {
     return (
         <div className="mb-8">
             <input

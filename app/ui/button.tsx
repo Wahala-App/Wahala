@@ -1,9 +1,9 @@
 import clsx from 'clsx';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    children: React.ReactNode;
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    children: ReactNode;
 }
-
 export function DefaultButton({ children, className, onClick, ...otherProps }: ButtonProps) {
     return (
         <button
@@ -16,23 +16,12 @@ export function DefaultButton({ children, className, onClick, ...otherProps }: B
     )
 }
 
-export function Button({ children, className, onClick, ...otherProps }: ButtonProps) {
+export function PillButton({ children, className, onClick, ...otherProps }: ButtonProps) {
     return (
         <DefaultButton 
             className={clsx(className, "bg-foreground text-background px-12 py-2")}
             onClick={onClick}
             {...otherProps}
-        >
-            {children}
-        </DefaultButton>
-    )
-}
-
-export function SocialButton({ children, ...otherProps }: ButtonProps) {
-    return (
-        <DefaultButton
-            {...otherProps}
-            className={clsx("w-12 h-12 rounded-l hover:bg-hover flex items-center justify-center text-lg")}
         >
             {children}
         </DefaultButton>
