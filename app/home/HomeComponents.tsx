@@ -17,6 +17,7 @@ export default function HomeComponents() {
 function IncidentSearchComponent() {
     const commonIncidents = IncidentType;
     const nearbyIncidents = getNearbyIncidents(); //Replace with some API call or constant'
+    const [selectedIncidentType, setSelectedIncidentType] = useState<IncidentType | null>(null);
     
 
     return (
@@ -33,7 +34,14 @@ function IncidentSearchComponent() {
                     return (
                         <DefaultButton 
                             key={incident}
-                            className={"rounded-full px-2 outline outline-1 outline-foreground"}
+                            className={"rounded-full px-2 outline outline-1 outline-foreground " + (selectedIncidentType === incident ? " bg-foreground text-background" : " bg-background text-foreground")}
+                            onClick={() => {
+                                    if (selectedIncidentType === incident) {
+                                        setSelectedIncidentType(null);
+                                    } else {
+                                        setSelectedIncidentType(incident);
+                                    }
+                            }}
                         >
                             {incident}
                         </DefaultButton>
@@ -43,6 +51,10 @@ function IncidentSearchComponent() {
 
             <div className="details-container">
                 {nearbyIncidents.map((incident, index) => {
+                    if (selectedIncidentType && incident.incidentType !== selectedIncidentType) {
+                        return null;
+                    }
+                    
                     return (
                         <Incident key={index} {...incident} />
                     )
