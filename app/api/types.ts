@@ -14,6 +14,7 @@ export enum IncidentType {
     VANDALISM = "Vandalism",
     DRUG_OFFENSE = "Drug Offense",
     PUBLIC_INTOXICATION = "Public Intoxication",
+    OTHER = "Other",
 }
 
 export interface Location {
