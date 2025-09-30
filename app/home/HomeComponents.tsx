@@ -1,5 +1,5 @@
-import { TextInputWithoutTitle } from "../ui/TextInput";
-import { Button, DefaultButton } from "../ui/button";
+import { TextInput } from "../ui/TextInput";
+import { PillButton, DefaultButton } from "../ui/button";
 import { useState } from "react";
 import { getNearbyIncidents } from "../api/server";
 import { IncidentType } from "../api/types";
@@ -25,7 +25,7 @@ function IncidentSearchComponent() {
                 Search for nearby alerts
             </div>
 
-            <TextInputWithoutTitle type={"search"} placeholder={"Search"} title={"Search"} />
+            <TextInput type={"search"} placeholder={"Search"} title={"Search"} />
 
             <div className="gap-4 flex flex-wrap mb-8">
                 {Object.values(commonIncidents).map((incident) => 
@@ -76,14 +76,14 @@ function QuickAddComponent() {
                 })}
             </div>
 
-            <Button
+            <PillButton
                 title={"Quick Add"}
                 type={"button"}
                 onClick={onQuickAdd}
                 className={"rounded-full"}
             >
                <div className="font-bold text-l"> +  Add </div>
-            </Button>
+            </PillButton>
         </div>
     )
 }

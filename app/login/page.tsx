@@ -3,7 +3,7 @@ import MapImage from "@/app/ui/LoginMap";
 
 export default function LoginPage() {
   return (
-      <div className="flex min-h-screen">
+      <div className="flex h-screen">
           <div className="flex-[0.6] flex items-center justify-center">
               <div className="w-4/5">
                   <LoginComponent/>
