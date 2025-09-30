@@ -1,11 +1,13 @@
 "use client";
 
-import MapComponent from "../map/map";
+import React, { Suspense } from "react";
 import HomeComponents from "./HomeComponents";
+import Loading from "./loading";
+import MapComponent from "../map/map";
+
+//const MapComponent = React.lazy(() => import("../map/map"));
 
 export default function HomeComponent() {
-
-
     return (
         <div className="h-screen">
             <div className="flex h-full">
@@ -15,7 +17,9 @@ export default function HomeComponent() {
                     </div>
                 </div>
                 <div className="flex-[0.6]">
-                    <MapComponent />
+                    <Suspense fallback={<Loading />}>
+                        <MapComponent />
+                    </Suspense>
                 </div>
             </div>
         </div>
