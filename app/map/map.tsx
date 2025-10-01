@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import getCurrLocation, { FALLBACK_LOCATION } from "./mapUtils";
 import { DefaultButton } from "../ui/button";
 import Image from "next/image";
+import Loading from "./loading"
 
 export default function MapComponent() {
     const mapRef = useRef<Map | null>(null);
     const [currLocation, setCurrLocation] = useState<{latitude: number, longitude: number}>(FALLBACK_LOCATION);
+    const [isInitializing, setIsInitializing] = useState(true);
 
     const handleStarLogoClick = () => {
         mapRef.current?.flyTo({
@@ -44,15 +46,23 @@ export default function MapComponent() {
                             }
                         ]
                     },
-                    center: [currLocation.longitude, currLocation.latitude],
+                    center: [location.longitude, location.latitude],
                     maplibreLogo: false,    
                     zoom: 15,
                 }).addControl(new AttributionControl({
                     compact: true
                 }));
+
+                // Wait for the map to finish its initial render
+                mapRef.current.once && mapRef.current.once('load', () => {
+                    setIsInitializing(false);
+                });
+            } else {
+                setIsInitializing(false);
             }
         } catch (error) {
             console.error('Error initializing map:', error);
+            setIsInitializing(false);
         }
     };
 
@@ -70,7 +80,10 @@ export default function MapComponent() {
 
     return (
         <div className="h-full flex flex-col">
-            <div id="map" className="w-full h-full overflow-hidden">
+            <div id="map" className="w-full h-full overflow-hidden relative">
+
+                {isInitializing && <Loading />}
+
                 <div className="z-1 absolute bottom-10 right-10">
                     <DefaultButton 
                         className="rounded-full px-3 py-3 bg-white hover:bg-hover-light"
