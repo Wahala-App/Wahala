@@ -28,5 +28,32 @@ export function getNearbyIncidents() {
             location: { latitude: 37.7749, longitude: -122.4194 },
             timestamp: new Date(),
         },
+
+        {
+            id: "4",
+            title: "Theft",
+            incidentType: IncidentType.THEFT,
+            description: "A theft occurred at the mall.",
+            location: { latitude: 37.7749, longitude: -122.4194 },
+            timestamp: new Date(),
+        },
+
+        {
+            id: "5",
+            title: "Vandalism",
+            incidentType: IncidentType.VANDALISM,
+            description: "Vandalism occurred at the school.",
+            location: { latitude: 37.7749, longitude: -122.4194 },
+            timestamp: new Date(),
+        },
+
+        {
+            id: "6",
+            title: "Burglary",
+            incidentType: IncidentType.THEFT,
+            description: "A burglary occurred at the house.",
+            location: { latitude: 37.7749, longitude: -122.4194 },
+            timestamp: new Date(),
+        }
     ];
 }

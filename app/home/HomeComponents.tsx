@@ -34,7 +34,7 @@ function IncidentSearchComponent() {
                     return (
                         <DefaultButton 
                             key={incident}
-                            className={"rounded-full px-2 outline outline-1 outline-foreground " + (selectedIncidentType === incident ? " bg-foreground text-background" : " bg-background text-foreground")}
+                            className={"rounded-full px-2 outline outline-1 outline-foreground hover:bg-foreground hover:text-background" + (selectedIncidentType === incident ? " bg-foreground text-background" : " bg-background text-foreground")}
                             onClick={() => {
                                     if (selectedIncidentType === incident) {
                                         setSelectedIncidentType(null);
