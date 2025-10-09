@@ -7,9 +7,13 @@ import Incident from "../ui/Incident";
 
 export default function HomeComponents() {
     return (
-        <div className="flex flex-col gap-10 mt-2">
-            <IncidentSearchComponent />
-            <QuickAddComponent />
+        <div className="flex flex-col gap-10 p-10 h-screen">
+            <div className="flex-[0.70]">
+                <IncidentSearchComponent />
+            </div>
+            <div className="flex-[0.30]">
+                <QuickAddComponent />
+            </div>
         </div>
     )
 }
@@ -49,7 +53,8 @@ function IncidentSearchComponent() {
                 })}
             </div>
 
-            <div className="details-container">
+                {/* Incident List */}
+            <div className="overflow-y-auto max-h-[40vh]">
                 {nearbyIncidents.map((incident, index) => {
                     if (selectedIncidentType && incident.incidentType !== selectedIncidentType) {
                         return null;
