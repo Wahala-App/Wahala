@@ -1,23 +1,27 @@
 "use client";
 
 import { AttributionControl, Map } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import getCurrLocation, { FALLBACK_LOCATION } from "./mapUtils";
 import { DefaultButton } from "../ui/button";
 import Image from "next/image";
 import Loading from "./loading"
 
-export default function MapComponent() {
+const MapComponent = forwardRef<{recalibrateLocation: () => void}, {}>(function MapComponent(props, ref) {
     const mapRef = useRef<Map | null>(null);
     const [currLocation, setCurrLocation] = useState<{latitude: number, longitude: number}>(FALLBACK_LOCATION);
     const [isInitializing, setIsInitializing] = useState(true);
 
-    const handleStarLogoClick = () => {
+    const recalibrateLocation = () => {
         mapRef.current?.flyTo({
             center: [currLocation.longitude, currLocation.latitude],
             zoom: 15
         });
     }
+
+    useImperativeHandle(ref, () => ({
+        recalibrateLocation
+    }));
 
     const initializeMap = async() => {
         try {
@@ -87,7 +91,7 @@ export default function MapComponent() {
                 <div className="z-1 absolute bottom-10 right-10">
                     <DefaultButton 
                         className="rounded-full px-3 py-3 bg-white hover:bg-hover-light"
-                        onClick={handleStarLogoClick}
+                        onClick={recalibrateLocation}
                     >
                         <Image src={"/starLogo.svg"} alt={"Location Logo"} width={40} height={40} />
                     </DefaultButton>
@@ -95,4 +99,6 @@ export default function MapComponent() {
             </div>
         </div>
     )
-}
+});
+
+export default MapComponent;
