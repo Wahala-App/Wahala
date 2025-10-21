@@ -4,6 +4,8 @@ import { useState } from "react";
 import { getNearbyIncidents } from "../api/server";
 import { IncidentType } from "../api/types";
 import Incident from "../ui/Incident";
+import Image from "next/image";
+import { incidentToIcon } from "../map/mapUtils";
 
 export default function HomeComponents() {
     return (
@@ -71,12 +73,14 @@ function IncidentSearchComponent() {
 
 function QuickAddComponent() {
 
-    const [quickAddTypes, setQuickAddTypes] = useState<string[]>([]);
+    const quickAddTypes = Object.values(IncidentType);
 
     const onQuickAdd = () => {
-        if (quickAddTypes.length < 8) {
-            setQuickAddTypes([...quickAddTypes, "Crime"]);
-        }
+        // Logic for quick add
+    }
+
+    const itemClicked = (item: string) => {
+        console.log("Clicked on ", item);
     }
 
     return (
@@ -88,7 +92,14 @@ function QuickAddComponent() {
             <div className="text-xl font-black mb-8 grid grid-rows-2 gap-4 grid-cols-4">
                 { quickAddTypes.map((item, index) => {
                     return (
-                        <div key={index}>{item}</div>
+                        <div key={item}>
+                            <DefaultButton 
+                                className="rounded-full p-4 shadow-lg"
+                                onClick={() => itemClicked(item)}
+                            >
+                                <Image src={incidentToIcon(item)} alt={item} width={40} height={40} />
+                            </DefaultButton>
+                        </div>
                     )
                 })}
             </div>
