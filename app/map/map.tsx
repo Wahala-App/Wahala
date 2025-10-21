@@ -1,6 +1,6 @@
 "use client";
 
-import { AttributionControl, Map } from "maplibre-gl";
+import { AttributionControl, Map, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import getCurrLocation, { FALLBACK_LOCATION } from "./mapUtils";
 import { DefaultButton } from "../ui/button";
