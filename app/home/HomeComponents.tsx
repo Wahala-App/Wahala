@@ -56,7 +56,7 @@ function IncidentSearchComponent() {
             </div>
 
                 {/* Incident List */}
-            <div className="overflow-y-auto max-h-[40vh]">
+            <div className="overflow-y-auto max-h-[40vh] no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shadow-sm px-4">
                 {nearbyIncidents.map((incident, index) => {
                     if (selectedIncidentType && incident.incidentType !== selectedIncidentType) {
                         return null;
@@ -74,13 +74,14 @@ function IncidentSearchComponent() {
 function QuickAddComponent() {
 
     const quickAddTypes = Object.values(IncidentType);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const onQuickAdd = () => {
         // Logic for quick add
     }
 
     const itemClicked = (item: string) => {
-        console.log("Clicked on ", item);
+        setIsDialogOpen(!isDialogOpen);
     }
 
     return (
@@ -94,7 +95,7 @@ function QuickAddComponent() {
                     return (
                         <div key={item}>
                             <DefaultButton 
-                                className="rounded-full p-4 shadow-lg"
+                                className="rounded-full p-4 shadow-lg hover:background-light"
                                 onClick={() => itemClicked(item)}
                             >
                                 <Image src={incidentToIcon(item)} alt={item} width={40} height={40} />
