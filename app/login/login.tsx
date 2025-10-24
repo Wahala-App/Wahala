@@ -64,7 +64,7 @@ export default function LoginComponent() {
             height={25}
           />
         </RoundIconLoginButton>
-        <RoundIconLoginButton>
+        <RoundIconLoginButton className="dark:invert">
           <Image src={"/apple.svg"} alt={"Apple Logo"} width={30} height={25} />
         </RoundIconLoginButton>
         <RoundIconLoginButton>
@@ -80,11 +80,16 @@ export default function LoginComponent() {
   );
 }
 
-function RoundIconLoginButton({ children, ...otherProps }: ButtonProps) {
+function RoundIconLoginButton({
+  children,
+  className,
+  ...otherProps
+}: ButtonProps) {
   return (
     <DefaultButton
       {...otherProps}
       className={clsx(
+        className,
         "w-12 h-12 rounded-full hover:bg-hover flex items-center justify-center text-lg",
       )}
     >

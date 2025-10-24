@@ -16,10 +16,15 @@ import Loading from "./loading";
 const MapComponent = forwardRef<
   {
     recalibrateLocation: () => void;
-    addCustomMarker: (iconPath: string, lat: number, lng: number) => void;
+    addCustomMarker: (
+      iconPath: string,
+      lat: number,
+      lng: number,
+      incidentId?: string,
+    ) => void;
   },
-  {}
->(function MapComponent(props, ref) {
+  { onMarkerClick?: (incidentId: string) => void }
+>(function MapComponent({ onMarkerClick }, ref) {
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
     latitude: number;
@@ -34,7 +39,12 @@ const MapComponent = forwardRef<
     });
   };
 
-  const addCustomMarker = (iconPath: string, lat: number, lng: number) => {
+  const addCustomMarker = (
+    iconPath: string,
+    lat: number,
+    lng: number,
+    incidentId?: string,
+  ) => {
     if (!mapRef.current) return;
 
     console.log("Adding custom marker at:", lat, lng);
@@ -47,10 +57,15 @@ const MapComponent = forwardRef<
     el.style.backgroundSize = "contain";
     el.style.backgroundRepeat = "no-repeat";
     el.style.backgroundPosition = "center";
+    el.style.cursor = "pointer";
+
+    if (incidentId && onMarkerClick) {
+      el.addEventListener("click", () => onMarkerClick(incidentId));
+    }
 
     new Marker({
       element: el,
-      draggable: true,
+      draggable: false,
     })
       .setLngLat([lng, lat])
       .addTo(mapRef.current);

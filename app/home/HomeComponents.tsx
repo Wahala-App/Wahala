@@ -1,21 +1,47 @@
 import { TextInput } from "../ui/TextInput";
 import { PillButton, DefaultButton } from "../ui/button";
-import { useState } from "react";
-import { getNearbyIncidents } from "../api/server";
+import { useState, useEffect } from "react";
+import { getNearbyIncidents, createIncident } from "../api/server";
 import { IncidentType } from "../api/types";
 import Incident from "../ui/Incident";
 import Image from "next/image";
 import { incidentToIcon } from "../map/mapUtils";
+import { IncidentDialog } from "../ui/IncidentDialog";
 
 export default function HomeComponents({
   addCustomMarker,
+  selectedIncidentId,
 }: {
-  addCustomMarker: (iconPath: string, lat: number, lng: number) => void;
+  addCustomMarker: (
+    iconPath: string,
+    lat: number,
+    lng: number,
+    incidentId?: string,
+  ) => void;
+  selectedIncidentId?: string | null;
 }) {
+  useEffect(() => {
+    // Wait for map to load, then add existing incidents
+    const timer = setTimeout(() => {
+      const incidents = getNearbyIncidents();
+      incidents.forEach((incident) => {
+        const iconPath = incidentToIcon(incident.incidentType);
+        addCustomMarker(
+          iconPath,
+          incident.location.latitude,
+          incident.location.longitude,
+          incident.id,
+        );
+      });
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex flex-col gap-10 p-10 h-screen">
       <div className="flex-[0.70]">
-        <IncidentSearchComponent />
+        <IncidentSearchComponent selectedIncidentId={selectedIncidentId} />
       </div>
       <div className="flex-[0.30]">
         <QuickAddComponent addCustomMarker={addCustomMarker} />
@@ -24,9 +50,13 @@ export default function HomeComponents({
   );
 }
 
-function IncidentSearchComponent() {
+function IncidentSearchComponent({
+  selectedIncidentId,
+}: {
+  selectedIncidentId?: string | null;
+}) {
   const commonIncidents = IncidentType;
-  const nearbyIncidents = getNearbyIncidents(); //Replace with some API call or constant'
+  const nearbyIncidents = getNearbyIncidents();
   const [selectedIncidentType, setSelectedIncidentType] =
     useState<IncidentType | null>(null);
 
@@ -64,6 +94,10 @@ function IncidentSearchComponent() {
       {/* Incident List */}
       <div className="overflow-y-auto max-h-[40vh] no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shadow-sm px-4">
         {nearbyIncidents.map((incident, index) => {
+          if (selectedIncidentId && incident.id !== selectedIncidentId) {
+            return null;
+          }
+
           if (
             selectedIncidentType &&
             incident.incidentType !== selectedIncidentType
@@ -87,14 +121,34 @@ function QuickAddComponent({
   const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(
     null,
   );
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const onQuickAdd = () => {
     if (selectedIncident) {
-      // Add marker at current location (you can modify this to use a different location)
-      const iconPath = incidentToIcon(selectedIncident);
-      addCustomMarker(iconPath, 32.4173824, -81.7856512); // Using fallback location for now
-      setSelectedIncident(null);
+      setIsDialogOpen(true);
     }
+  };
+
+  const handleDialogSubmit = (incidentData: {
+    incidentType: IncidentType;
+    title: string;
+    description?: string;
+    location: { latitude: number; longitude: number };
+  }) => {
+    // Create the incident using the mock server
+    const newIncident = createIncident(incidentData);
+
+    // Add marker to map
+    const iconPath = incidentToIcon(incidentData.incidentType);
+    addCustomMarker(
+      iconPath,
+      incidentData.location.latitude,
+      incidentData.location.longitude,
+    );
+
+    // Reset selection
+    setSelectedIncident(null);
+    setIsDialogOpen(false);
   };
 
   const itemClicked = (item: IncidentType) => {
@@ -110,7 +164,7 @@ function QuickAddComponent({
           return (
             <div key={item}>
               <DefaultButton
-                className={`rounded-full p-4 shadow-lg hover:background-light ${selectedIncident === item ? "ring-2 ring-blue-500" : ""}`}
+                className={`rounded-full p-4 shadow-lg outline outline-1 outline-foreground hover:bg-foreground hover:text-background ${selectedIncident === item ? "bg-foreground text-background" : "bg-background text-foreground"}`}
                 onClick={() => itemClicked(item)}
               >
                 <Image
@@ -118,6 +172,11 @@ function QuickAddComponent({
                   alt={item}
                   width={40}
                   height={40}
+                  className={
+                    selectedIncident === item
+                      ? "filter invert dark:invert-0"
+                      : "dark:invert"
+                  }
                 />
               </DefaultButton>
             </div>
@@ -130,9 +189,20 @@ function QuickAddComponent({
         type={"button"}
         onClick={onQuickAdd}
         className={"rounded-full"}
+        disabled={!selectedIncident}
       >
         <div className="font-bold text-l"> + Add </div>
       </PillButton>
+
+      <IncidentDialog
+        isOpen={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setSelectedIncident(null);
+        }}
+        onSubmit={handleDialogSubmit}
+        selectedIncidentType={selectedIncident || undefined}
+      />
     </div>
   );
 }

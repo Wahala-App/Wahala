@@ -7,16 +7,27 @@ import MapComponent from "../map/map";
 import Hamburger from "../ui/hamburger";
 import Image from "next/image";
 
-//const MapComponent = React.lazy(() => import("../map/map"));
-
 export default function HomeComponent() {
   const mapRef = useRef<{
     recalibrateLocation: () => void;
-    addCustomMarker: (iconPath: string, lat: number, lng: number) => void;
+    addCustomMarker: (
+      iconPath: string,
+      lat: number,
+      lng: number,
+      incidentId?: string,
+    ) => void;
   }>(null);
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
+    null,
+  );
 
   const handleRecalibrate = () => {
     mapRef.current?.recalibrateLocation();
+  };
+
+  const handleMarkerClick = (incidentId: string) => {
+    console.log("Marker clicked:", incidentId);
+    setSelectedIncidentId(incidentId);
   };
 
   return (
@@ -24,14 +35,20 @@ export default function HomeComponent() {
       <div className="flex h-full">
         <div className="flex-[0.4] flex flex-col items-center justify-center w-9/10">
           <HomeComponents
-            addCustomMarker={(iconPath: string, lat: number, lng: number) =>
-              mapRef.current?.addCustomMarker(iconPath, lat, lng)
+            addCustomMarker={(
+              iconPath: string,
+              lat: number,
+              lng: number,
+              incidentId?: string,
+            ) =>
+              mapRef.current?.addCustomMarker(iconPath, lat, lng, incidentId)
             }
+            selectedIncidentId={selectedIncidentId}
           />
         </div>
         <div className="flex-[0.6]">
           <Suspense fallback={<Loading />}>
-            <MapComponent ref={mapRef} />
+            <MapComponent ref={mapRef} onMarkerClick={handleMarkerClick} />
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval recalibrate={handleRecalibrate} />
             </div>

@@ -2,8 +2,11 @@ import Image from "next/image";
 
 interface TextInputProps {
   title: string;
-  type: "email" | "password" | "search";
+  type: "email" | "password" | "search" | "text";
   placeholder: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
 }
 
 export function TitledTextInput(props: TextInputProps) {
@@ -21,7 +24,9 @@ export function TitledTextInput(props: TextInputProps) {
           id={props.title}
           type={props.type}
           placeholder={props.placeholder}
-          required
+          value={props.value}
+          onChange={props.onChange}
+          required={props.required}
         />
       </div>
     </div>
@@ -36,7 +41,9 @@ export function TextInput(props: TextInputProps) {
         id={props.placeholder}
         type={props.type}
         placeholder={props.placeholder}
-        required
+        value={props.value}
+        onChange={props.onChange}
+        required={props.required}
       />
     </div>
   );
