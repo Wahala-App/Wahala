@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export interface SpinnerProps {
   size?: number;
@@ -11,21 +11,21 @@ export interface SpinnerProps {
 
 const Spinner = ({
   size = 100,
-  color = '#000000', // blue-500
-  borderColor = '#ffffff', // gray-300
+  color = "#000000", // blue-500
+  borderColor = "#ffffff", // gray-300
   borderWidth = 3,
-  className = '',
-  ariaLabel = 'Loading',
+  className = "",
+  ariaLabel = "Loading",
 }: SpinnerProps) => {
   const style: React.CSSProperties = {
     width: size,
     height: size,
-    borderStyle: 'solid',
+    borderStyle: "solid",
     borderWidth: borderWidth,
     borderColor: borderColor,
     borderTopColor: color,
-    borderRadius: '50%',
-    boxSizing: 'border-box',
+    borderRadius: "50%",
+    boxSizing: "border-box",
   };
 
   return (

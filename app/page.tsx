@@ -1,21 +1,28 @@
 "use client";
 
-import { useAuth } from './contexts/AuthContext';
-import { redirect } from 'next/navigation';
-import HomeComponent from './home/home';
-import Loading from './loading';
+import { useAuth } from "./contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import HomeComponent from "./home/home";
+import Loading from "./loading";
 
 export default function Home() {
-    const { isAuthenticated, isLoaded } = useAuth();
-    
-    // Wait for auth state to load before making decisions
-    if (!isLoaded) {
-        return <Loading />; // or a proper loading component
+  const { isAuthenticated, isLoaded } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && !isAuthenticated) {
+      router.push("/login");
     }
-    
-    if (isAuthenticated) {
-        return <HomeComponent />;
-    } else {
-        redirect('/login');
-    }
+  }, [isLoaded, isAuthenticated, router]);
+
+  if (!isLoaded) {
+    return <Loading />;
+  }
+
+  if (isAuthenticated) {
+    return <HomeComponent />;
+  }
+
+  return <Loading />;
 }

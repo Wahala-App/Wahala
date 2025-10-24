@@ -1,7 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 
-export function Dialog( isOpen: boolean, children: React.ReactNode) {
-
+export function Dialog(isOpen: boolean, children: React.ReactNode) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -14,13 +13,12 @@ export function Dialog( isOpen: boolean, children: React.ReactNode) {
     }
   }, [isOpen]);
 
-
-    return (
-        <dialog
-            open={isOpen}
-            className='bg-white rounded-lg p-6 shadow-lg max-w-lg w-full'
-        >
-            {children}
-        </dialog>
-    )
+  return (
+    <dialog
+      open={isOpen}
+      className="bg-white rounded-lg p-6 shadow-lg max-w-lg w-full"
+    >
+      {children}
+    </dialog>
+  );
 }
