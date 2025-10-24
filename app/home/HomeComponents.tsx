@@ -1,8 +1,7 @@
 import { TextInput } from "../ui/TextInput";
 import { PillButton, DefaultButton } from "../ui/button";
 import { useState, useEffect } from "react";
-import { getNearbyIncidents, createIncident } from "../api/server";
-import { IncidentType } from "../api/types";
+import { IncidentType, Incident as IncidentType_Interface } from "../api/types";
 import Incident from "../ui/Incident";
 import Image from "next/image";
 import { incidentToIcon } from "../map/mapUtils";
@@ -22,8 +21,9 @@ export default function HomeComponents({
 }) {
   useEffect(() => {
     // Wait for map to load, then add existing incidents
-    const timer = setTimeout(() => {
-      const incidents = getNearbyIncidents();
+    const timer = setTimeout(async () => {
+      const response = await fetch('/api/incidents');
+      const incidents: IncidentType_Interface[] = await response.json();
       incidents.forEach((incident) => {
         const iconPath = incidentToIcon(incident.incidentType);
         addCustomMarker(
@@ -56,9 +56,18 @@ function IncidentSearchComponent({
   selectedIncidentId?: string | null;
 }) {
   const commonIncidents = IncidentType;
-  const nearbyIncidents = getNearbyIncidents();
+  const [nearbyIncidents, setNearbyIncidents] = useState<IncidentType_Interface[]>([]);
   const [selectedIncidentType, setSelectedIncidentType] =
     useState<IncidentType | null>(null);
+
+  useEffect(() => {
+    const fetchIncidents = async () => {
+      const response = await fetch('/api/incidents');
+      const incidents = await response.json();
+      setNearbyIncidents(incidents);
+    };
+    fetchIncidents();
+  }, []);
 
   return (
     <div className="card">
@@ -129,14 +138,20 @@ function QuickAddComponent({
     }
   };
 
-  const handleDialogSubmit = (incidentData: {
+  const handleDialogSubmit = async (incidentData: {
     incidentType: IncidentType;
     title: string;
     description?: string;
     location: { latitude: number; longitude: number };
   }) => {
-    // Create the incident using the mock server
-    const newIncident = createIncident(incidentData);
+    // Create the incident using the API
+    const response = await fetch('/api/incidents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(incidentData)
+    });
+    
+    const newIncident = await response.json();
 
     // Add marker to map
     const iconPath = incidentToIcon(incidentData.incidentType);
