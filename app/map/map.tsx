@@ -8,7 +8,8 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import getCurrLocation, { FALLBACK_LOCATION } from "./mapUtils";
+import getCurrLocation, {FALLBACK_LOCATION, incidentIcon,} from "./mapUtils";
+import {Incident} from "../api/types";
 import { DefaultButton } from "../ui/button";
 import Image from "next/image";
 import Loading from "./loading";
@@ -16,12 +17,7 @@ import Loading from "./loading";
 const MapComponent = forwardRef<
   {
     recalibrateLocation: () => void;
-    addCustomMarker: (
-      iconPath: string,
-      lat: number,
-      lng: number,
-      incidentId?: string,
-    ) => void;
+    addCustomMarker: (incident: Incident) => void;
   },
   { onMarkerClick?: (incidentId: string) => void }
 >(function MapComponent({ onMarkerClick }, ref) {
@@ -40,27 +36,18 @@ const MapComponent = forwardRef<
   };
 
   const addCustomMarker = (
-    iconPath: string,
-    lat: number,
-    lng: number,
-    incidentId?: string,
+    incident: Incident
   ) => {
     if (!mapRef.current) return;
 
+    const lat = incident.location.latitude;
+    const lng = incident.location.longitude;
     console.log("Adding custom marker at:", lat, lng);
 
-    const el = document.createElement("div");
-    el.className = "custom-marker";
-    el.style.backgroundImage = `url(${iconPath})`;
-    el.style.width = "40px";
-    el.style.height = "40px";
-    el.style.backgroundSize = "contain";
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundPosition = "center";
-    el.style.cursor = "pointer";
+    const el = incidentIcon(incident.incidentType)
 
-    if (incidentId && onMarkerClick) {
-      el.addEventListener("click", () => onMarkerClick(incidentId));
+    if (incident.id && onMarkerClick) {
+      el.addEventListener("click", () => onMarkerClick(incident.id));
     }
 
     new Marker({

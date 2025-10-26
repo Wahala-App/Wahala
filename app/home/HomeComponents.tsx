@@ -1,8 +1,8 @@
 import { TextInput } from "../ui/TextInput";
 import { PillButton, DefaultButton } from "../ui/button";
 import { useState, useEffect } from "react";
-import { IncidentType, Incident as IncidentType_Interface } from "../api/types";
-import Incident from "../ui/Incident";
+import IncidentDisplay from "../ui/IncidentDisplay";
+import {Incident, IncidentType} from "../api/types";
 import Image from "next/image";
 import { incidentToIcon } from "../map/mapUtils";
 import { IncidentDialog } from "../ui/IncidentDialog";
@@ -12,10 +12,7 @@ export default function HomeComponents({
   selectedIncidentId,
 }: {
   addCustomMarker: (
-    iconPath: string,
-    lat: number,
-    lng: number,
-    incidentId?: string,
+    incident: Incident,
   ) => void;
   selectedIncidentId?: string | null;
 }) {
@@ -23,14 +20,10 @@ export default function HomeComponents({
     // Wait for map to load, then add existing incidents
     const timer = setTimeout(async () => {
       const response = await fetch('/api/incidents');
-      const incidents: IncidentType_Interface[] = await response.json();
+      const incidents: Incident[] = await response.json();
       incidents.forEach((incident) => {
-        const iconPath = incidentToIcon(incident.incidentType);
         addCustomMarker(
-          iconPath,
-          incident.location.latitude,
-          incident.location.longitude,
-          incident.id,
+          incident
         );
       });
     }, 2000);
@@ -56,7 +49,7 @@ function IncidentSearchComponent({
   selectedIncidentId?: string | null;
 }) {
   const commonIncidents = IncidentType;
-  const [nearbyIncidents, setNearbyIncidents] = useState<IncidentType_Interface[]>([]);
+  const [nearbyIncidents, setNearbyIncidents] = useState<Incident[]>([]);
   const [selectedIncidentType, setSelectedIncidentType] =
     useState<IncidentType | null>(null);
 
@@ -66,7 +59,7 @@ function IncidentSearchComponent({
       const incidents = await response.json();
       setNearbyIncidents(incidents);
     };
-    fetchIncidents();
+    fetchIncidents().then(r => {});
   }, []);
 
   return (
@@ -100,7 +93,7 @@ function IncidentSearchComponent({
         })}
       </div>
 
-      {/* Incident List */}
+      {/* IncidentDisplay List */}
       <div className="overflow-y-auto max-h-[40vh] no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] shadow-sm px-4">
         {nearbyIncidents.map((incident, index) => {
           if (selectedIncidentId && incident.id !== selectedIncidentId) {
@@ -114,7 +107,7 @@ function IncidentSearchComponent({
             return null;
           }
 
-          return <Incident key={index} {...incident} />;
+          return <IncidentDisplay key={index} {...incident} />;
         })}
       </div>
     </div>
@@ -124,7 +117,7 @@ function IncidentSearchComponent({
 function QuickAddComponent({
   addCustomMarker,
 }: {
-  addCustomMarker: (iconPath: string, lat: number, lng: number) => void;
+  addCustomMarker: (incident: Incident) => void;
 }) {
   const quickAddTypes = Object.values(IncidentType);
   const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(
@@ -154,11 +147,8 @@ function QuickAddComponent({
     const newIncident = await response.json();
 
     // Add marker to map
-    const iconPath = incidentToIcon(incidentData.incidentType);
     addCustomMarker(
-      iconPath,
-      incidentData.location.latitude,
-      incidentData.location.longitude,
+        newIncident
     );
 
     // Reset selection

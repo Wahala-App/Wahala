@@ -6,15 +6,13 @@ import Loading from "./loading";
 import MapComponent from "../map/map";
 import Hamburger from "../ui/hamburger";
 import Image from "next/image";
+import {Incident} from "@/app/api/types";
 
 export default function HomeComponent() {
   const mapRef = useRef<{
     recalibrateLocation: () => void;
     addCustomMarker: (
-      iconPath: string,
-      lat: number,
-      lng: number,
-      incidentId?: string,
+        incident: Incident,
     ) => void;
   }>(null);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
@@ -36,12 +34,9 @@ export default function HomeComponent() {
         <div className="flex-[0.4] flex flex-col items-center justify-center w-9/10">
           <HomeComponents
             addCustomMarker={(
-              iconPath: string,
-              lat: number,
-              lng: number,
-              incidentId?: string,
+                incident: Incident
             ) =>
-              mapRef.current?.addCustomMarker(iconPath, lat, lng, incidentId)
+              mapRef.current?.addCustomMarker(incident)
             }
             selectedIncidentId={selectedIncidentId}
           />

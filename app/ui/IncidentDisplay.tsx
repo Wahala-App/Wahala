@@ -1,6 +1,6 @@
-import { Incident as IncidentType } from "../api/types";
+import { Incident } from "../api/types";
 
-export default function Incident(props: IncidentType) {
+export default function IncidentDisplay(props: Incident)  {
   return (
     <div className="mb-8">
       <div className="text-xl font-bold my-2">{props.title}</div>
