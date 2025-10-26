@@ -1,23 +1,23 @@
 export interface Incident {
-    id: string;
-    incidentType: IncidentType;
-    title: string;
-    description?: string;
-    location: Location;
-    timestamp: Date;
+  id: string;
+  incidentType: IncidentType;
+  title: string;
+  description?: string;
+  location: Location;
+  timestamp: Date;
 }
 
-export enum IncidentType { 
-    ROBBERY = "Robbery",
-    ASSAULT = "Assault",
-    THEFT = "Theft",
-    VANDALISM = "Vandalism",
-    DRUG_OFFENSE = "Drug Offense",
-    PUBLIC_INTOXICATION = "Public Intoxication",
-    OTHER = "Other",
+export enum IncidentType {
+  ROBBERY = "Robbery",
+  ASSAULT = "Assault",
+  THEFT = "Theft",
+  VANDALISM = "Vandalism",
+  DRUG_OFFENSE = "Drug Offense",
+  PUBLIC_INTOXICATION = "Public Intoxication",
+  OTHER = "Other",
 }
 
 export interface Location {
-    latitude: number;
-    longitude: number;
+  latitude: number;
+  longitude: number;
 }
