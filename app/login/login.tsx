@@ -28,7 +28,7 @@ export default function LoginComponent() {
         Welcome to Wahala! Knowledge lights the way to safety
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-4">
         <TitledTextInput
           title={"Email Address"}
           type={"email"}
@@ -58,18 +58,18 @@ export default function LoginComponent() {
       <div className="flex gap-15 mt-6">
         <RoundIconLoginButton>
           <Image
-            src={"/google.svg"}
+            src={"/socialMedia/google.svg"}
             alt={"Google Logo"}
             width={30}
             height={25}
           />
         </RoundIconLoginButton>
         <RoundIconLoginButton className="dark:invert">
-          <Image src={"/apple.svg"} alt={"Apple Logo"} width={30} height={25} />
+          <Image src={"/socialMedia/apple.svg"} alt={"Apple Logo"} width={30} height={25} />
         </RoundIconLoginButton>
         <RoundIconLoginButton>
           <Image
-            src={"/facebook.svg"}
+            src={"/socialMedia/facebook.svg"}
             alt={"Facebook Logo"}
             width={30}
             height={25}

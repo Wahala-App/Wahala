@@ -132,7 +132,7 @@ const MapComponent = forwardRef<
 
         <div className="z-1 absolute bottom-10 right-10">
           <DefaultButton
-            className="rounded-full px-3 py-3 bg-white hover:bg-hover-light"
+            className="rounded-full px-3 py-3 bg-white dark:invert cursor-pointer"
             onClick={recalibrateLocation}
           >
             <Image
