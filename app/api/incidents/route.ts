@@ -71,23 +71,39 @@ const defaultIncidents: Incident[] = [
   },
 ];
 
+// In-memory storage for Vercel (will reset on each deployment)
+let incidentsCache: Incident[] | null = null;
+
 function loadIncidents(): Incident[] {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return defaultIncidents;
-    }
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data).map((incident: any) => ({
-      ...incident,
-      location: getRandomLocationNearby(),
-      timestamp: new Date(incident.timestamp)
-    }));
-  } catch {
-    return defaultIncidents;
+  // Try to use cache first
+  if (incidentsCache) {
+    return incidentsCache;
   }
+
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      const incidents = JSON.parse(data).map((incident: any) => ({
+        ...incident,
+        timestamp: new Date(incident.timestamp)
+      }));
+      incidentsCache = incidents;
+      return incidents;
+    }
+  } catch (error) {
+    console.warn('Failed to read incidents file:', error);
+  }
+
+  // Fallback to default incidents
+  incidentsCache = defaultIncidents;
+  return defaultIncidents;
 }
 
 function saveIncidents(incidents: Incident[]): void {
+  // Update cache
+  incidentsCache = incidents;
+  
+  // Try to save to file (will work in development, fail silently in production)
   try {
     const dir = path.dirname(DATA_FILE);
     if (!fs.existsSync(dir)) {
@@ -95,13 +111,19 @@ function saveIncidents(incidents: Incident[]): void {
     }
     fs.writeFileSync(DATA_FILE, JSON.stringify(incidents, null, 2));
   } catch (error) {
-    console.error('Failed to save incidents:', error);
+    console.warn('Failed to save incidents to file (expected in production):', error);
+    // In production, we rely on the cache which will persist for the duration of the serverless function
   }
 }
 
 export async function GET() {
-  const incidents = loadIncidents();
-  return NextResponse.json(incidents);
+  try {
+    const incidents = loadIncidents();
+    return NextResponse.json(incidents);
+  } catch (error) {
+    console.error('Error loading incidents:', error);
+    return NextResponse.json(defaultIncidents);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -112,15 +134,16 @@ export async function POST(request: NextRequest) {
     const newIncident: Incident = {
       ...body,
       id: (Math.max(...incidents.map(i => parseInt(i.id)), 0) + 1).toString(),
-      location: getRandomLocationNearby(),
+      location: body.location || getRandomLocationNearby(),
       timestamp: new Date(),
     };
 
-    incidents.push(newIncident);
-    saveIncidents(incidents);
+    const updatedIncidents = [...incidents, newIncident];
+    saveIncidents(updatedIncidents);
     
     return NextResponse.json(newIncident, { status: 201 });
   } catch (error) {
+    console.error('Error creating incident:', error);
     return NextResponse.json(
       { error: 'Failed to create incident' },
       { status: 400 }

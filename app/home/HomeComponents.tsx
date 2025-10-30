@@ -16,6 +16,8 @@ export default function HomeComponents({
   ) => void;
   selectedIncidentId?: string | null;
 }) {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   useEffect(() => {
     // Wait for map to load, then add existing incidents
     const timer = setTimeout(async () => {
@@ -31,13 +33,23 @@ export default function HomeComponents({
     return () => clearTimeout(timer);
   }, []);
 
+  const handleIncidentAdded = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   return (
     <div className="flex flex-col gap-10 p-10 h-screen">
       <div className="flex-[0.70]">
-        <IncidentSearchComponent selectedIncidentId={selectedIncidentId} />
+        <IncidentSearchComponent 
+          selectedIncidentId={selectedIncidentId} 
+          refreshTrigger={refreshTrigger}
+        />
       </div>
       <div className="flex-[0.30]">
-        <QuickAddComponent addCustomMarker={addCustomMarker} />
+        <QuickAddComponent 
+          addCustomMarker={addCustomMarker} 
+          onIncidentAdded={handleIncidentAdded}
+        />
       </div>
     </div>
   );
@@ -45,8 +57,10 @@ export default function HomeComponents({
 
 function IncidentSearchComponent({
   selectedIncidentId,
+  refreshTrigger,
 }: {
   selectedIncidentId?: string | null;
+  refreshTrigger?: number;
 }) {
   const commonIncidents = IncidentType;
   const [nearbyIncidents, setNearbyIncidents] = useState<Incident[]>([]);
@@ -60,7 +74,7 @@ function IncidentSearchComponent({
       setNearbyIncidents(incidents);
     };
     fetchIncidents().then(r => {});
-  }, []);
+  }, [refreshTrigger]);
 
   return (
     <div className="card">
@@ -116,8 +130,10 @@ function IncidentSearchComponent({
 
 function QuickAddComponent({
   addCustomMarker,
+  onIncidentAdded,
 }: {
   addCustomMarker: (incident: Incident) => void;
+  onIncidentAdded: () => void;
 }) {
   const quickAddTypes = Object.values(IncidentType);
   const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(
@@ -137,23 +153,33 @@ function QuickAddComponent({
     description?: string;
     location: { latitude: number; longitude: number };
   }) => {
-    // Create the incident using the API
-    const response = await fetch('/api/incidents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(incidentData)
-    });
-    
-    const newIncident = await response.json();
+    try {
+      // Create the incident using the API
+      const response = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(incidentData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create incident');
+      }
+      
+      const newIncident = await response.json();
 
-    // Add marker to map
-    addCustomMarker(
-        newIncident
-    );
+      // Add marker to map
+      addCustomMarker(newIncident);
 
-    // Reset selection
-    setSelectedIncident(null);
-    setIsDialogOpen(false);
+      // Trigger refresh of incident list
+      onIncidentAdded();
+
+      // Reset selection
+      setSelectedIncident(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating incident:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const itemClicked = (item: IncidentType) => {
