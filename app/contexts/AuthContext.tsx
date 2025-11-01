@@ -7,65 +7,76 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { supabaseClient } from "@/lib/supabase";
+import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
-  isAuthenticated: boolean;
-  isLoaded: boolean;
-  login: () => void;
-  logout: () => void;
+  user: User | null;
+  session: Session | null;
+  isLoading: boolean;
+  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_KEY = "wahala_auth";
-const AUTH_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const authData = localStorage.getItem(AUTH_KEY);
-      if (authData) {
-        try {
-          const { timestamp } = JSON.parse(authData);
-          const isExpired = Date.now() - timestamp > AUTH_EXPIRY;
+    // Get initial session
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
 
-          if (!isExpired) {
-            setIsAuthenticated(true);
-          } else {
-            localStorage.removeItem(AUTH_KEY);
-          }
-        } catch {
-          localStorage.removeItem(AUTH_KEY);
-        }
-      }
-      setIsLoaded(true);
-    }
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = () => {
-    setIsAuthenticated(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        AUTH_KEY,
-        JSON.stringify({
-          timestamp: Date.now(),
-        }),
-      );
-    }
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+    });
+    return { error };
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(AUTH_KEY);
-    }
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
+  };
+
+  const signOut = async () => {
+    await supabaseClient.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoaded, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isLoading,
+        signUp,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

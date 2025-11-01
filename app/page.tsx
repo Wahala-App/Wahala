@@ -7,20 +7,20 @@ import HomeComponent from "./home/home";
 import Loading from "./loading";
 
 export default function Home() {
-  const { isAuthenticated, isLoaded } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoaded && !isAuthenticated) {
+    if (!isLoading && !user) {
       router.push("/login");
     }
-  }, [isLoaded, isAuthenticated, router]);
+  }, [isLoading, user, router]);
 
-  if (!isLoaded) {
+  if (isLoading) {
     return <Loading />;
   }
 
-  if (isAuthenticated) {
+  if (user) {
     return <HomeComponent />;
   }
 

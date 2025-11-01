@@ -33,3 +33,21 @@ export function PillButton({
     </DefaultButton>
   );
 }
+
+export function RoundIconButton({
+  children,
+  className,
+  ...otherProps
+}: ButtonProps) {
+    return (
+        <DefaultButton
+            {...otherProps}
+            className={clsx(
+                className,
+                "w-12 h-12 rounded-full hover:bg-hover flex items-center justify-center text-lg",
+            )}
+        >
+            {children}
+        </DefaultButton>
+    );
+}
