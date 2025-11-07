@@ -3,21 +3,27 @@
 import { TitledTextInput } from "@/app/ui/TextInput";
 import { PillButton, RoundIconButton } from "@/app/ui/button";
 import Image from "next/image";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { login, signup } from "@/app/actions/auth";
+import { ErrorState, ErrorType, useLoading, handleUserState } from "@/src/contexts/AuthContext";
+
 import { useRouter } from "next/navigation";
 import {useState} from "react";
 
 export default function LoginComponent() {
-  const { signIn } = useAuth();
   const router = useRouter();
-
+  let isLoading = false;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-
-  const handleLogin = async () => {
-      setErrorMessage("");
-
+  
+  const { setLoading } = useLoading(); // ← Get the setter
+  const { setUserState } = handleUserState();
+  
+const handleLogin = async () => {
+   
+    
+    setLoading(true); // ← Start loading
+    try{
       if (!email.endsWith(".com")) {
           setErrorMessage("Please enter a valid email");
           return;
@@ -28,13 +34,30 @@ export default function LoginComponent() {
           return;
       }
 
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-          setErrorMessage(error.message);
-          return;
+       if (email.trim() === "" || password.trim() === "") 
+        {
+        throw  {type:"fill", message: "Please fill in all required fields."}
       }
 
+      await login(email, password);
+      setUserState("Signed In")
+      router.push("/login");
+      
+    }
+    catch (err: any) {
+
+    //Ensures user verifies 
+        if (err.type =="verify")
+        {
+          router.push("/verify");
+          return;
+        }
+     
+        console.log(err);
+      
+      } finally {
+        setLoading(false); // ← Start loading
+      }
       console.log("Successfully logged in!");
       router.push("/");
   };

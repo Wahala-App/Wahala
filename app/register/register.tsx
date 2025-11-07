@@ -5,16 +5,19 @@ import {PillButton, RoundIconButton} from "@/app/ui/button";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {useState} from "react";
-import { useAuth } from "@/app/contexts/AuthContext";
-
+import { useAuth } from "@/src/contexts/AuthContext";
+import {login, signup } from "@/app/actions/auth";
+import { appendSegmentCacheKeyPart } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
 export default function SignUpComponent() {
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
 
     const router = useRouter();
-    const { signUp } = useAuth();
+
     
     const handleRegister = async () => {
         setErrorMessage("");
@@ -28,13 +31,14 @@ export default function SignUpComponent() {
             setErrorMessage("Passwords do not match");
             return;
         }
-
-        const { error } = await signUp(email, password);
+       
+        console.log(firstName)
+        console.log(lastName)
+        console.log(email)
+        console.log(password)
+       await signup(firstName, lastName, email, password);
         
-        if (error) {
-            setErrorMessage(error.message);
-            return;
-        }
+       
 
         console.log("Successfully registered!");
         router.push("/login");
@@ -52,6 +56,20 @@ export default function SignUpComponent() {
             </div>
 
             <div className="grid sm:grid-cols-1 mb-4">
+                <TitledTextInput
+                    className={"mb-4"}
+                    title={"First Name"}
+                    type={"text"}
+                    placeholder={"First Name"}
+                    onChange={(e) => setFirstName(e.target.value)}
+                />
+                <TitledTextInput
+                    className={"mb-4"}
+                    title={"Last Name"}
+                    type={"text"}
+                    placeholder={"Last Name"}
+                    onChange={(e) => setLastName(e.target.value)}
+                />
                 <TitledTextInput
                     className={"mb-4"}
                     title={"Email Address"}
@@ -93,7 +111,7 @@ export default function SignUpComponent() {
             <div>
                 Already have an account? <u><a href={"/login"}> Login.</a></u>
             </div>
-
+22
             <div className="flex gap-15 mt-6">
                 <RoundIconButton>
                     <Image

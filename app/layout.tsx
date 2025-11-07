@@ -1,7 +1,9 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "../src/contexts/AuthContext";
 import ErrorBoundary from "./ui/ErrorBoundary";
 
 const geistSans = Geist({
@@ -14,25 +16,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Wahala",
-  description: "Next-Gen Crime Alert App",
-};
+// export const metadata: Metadata = {
+//   title: "Wahala",
+//   description: "Next-Gen Crime Alert App",
+// };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+// export default function RootLayout({
+//   children,
+// }: Readonly<{
+//   children: React.ReactNode;
+// }>) {
+//   return (
+//     <html lang="en">
+//       <body
+//         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+//       >
+        
+//       </body>
+//     </html>
+//   );
+// }
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ErrorBoundary>
-          <AuthProvider>{children}</AuthProvider>
-        </ErrorBoundary>
+    <html>
+      <body>
+        <AuthProvider>
+         \
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
 }
+
