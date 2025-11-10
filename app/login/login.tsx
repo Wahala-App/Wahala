@@ -17,7 +17,7 @@ export default function LoginComponent() {
   const [errorMessage, setErrorMessage] = useState("");
   
   const { setLoading } = useLoading(); // ← Get the setter
-  const { setUserState } = handleUserState();
+  const { userState, setUserState } = handleUserState();
   
 const handleLogin = async () => {
    
@@ -40,12 +40,15 @@ const handleLogin = async () => {
       }
 
       await login(email, password);
+     
       setUserState("Signed In")
-      router.push("/login");
+      console.log(userState);
+  
+      router.push("/");
       
     }
     catch (err: any) {
-
+    console.log(err)
     //Ensures user verifies 
         if (err.type =="verify")
         {
@@ -58,8 +61,7 @@ const handleLogin = async () => {
       } finally {
         setLoading(false); // ← Start loading
       }
-      console.log("Successfully logged in!");
-      router.push("/");
+     
   };
 
   return (
