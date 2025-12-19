@@ -152,7 +152,7 @@ export async function login(email: string, password: string) {
     credentials = user_credentials.user;
     console.log(credentials);
 
-    return credentials;
+    //return credentials;
   } catch (err: any) {
 
     if (err?.code)

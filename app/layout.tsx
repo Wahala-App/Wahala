@@ -41,7 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html>
       <body>
         <AuthProvider>
-         \
           {children}
         </AuthProvider>
       </body>
