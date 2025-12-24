@@ -8,6 +8,11 @@ import Hamburger from "../ui/hamburger";
 import Image from "next/image";
 import {Incident} from "@/app/api/types";
 import {IconText} from "@/app/ui/IconText";
+import { PillButton } from "../ui/button";
+import { auth } from "@/lib/firebase";
+import { logout } from "../actions/auth";
+import { useRouter } from "next/navigation";
+import { handleUserState } from "@/src/contexts/AuthContext";
 
 export default function HomeComponent() {
   const mapRef = useRef<{
@@ -56,29 +61,54 @@ export default function HomeComponent() {
 }
 
 function UserOval(props: { recalibrate: () => void }) {
+  const router = useRouter();
   const [isDetailsOpened, setIsDetailsOpened] = useState(false);
   const [address, setAddress] = useState("");
 
   useEffect(() => {
-        const storedLocation = localStorage.getItem("userLocation");
+    const storedLocation = localStorage.getItem("userLocation");
 
-        if (storedLocation) {
-            setAddress(JSON.parse(storedLocation));
-        } else {
-            fetch("/api/location")
-            .then(res => res.json())
-            .then(data => {
-                    console.log(data.features[0]);
-                    const temp_address = data.features[0].properties.address_line1;
-                    setAddress(temp_address);
-                    sessionStorage.setItem("userLocation", JSON.stringify(temp_address));
-                });
-        }
-  }, [])
+    if (storedLocation) {
+      setAddress(JSON.parse(storedLocation));
+    } else {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            fetch(`/api/location?lat=${lat}&lng=${lng}`)
+              .then((res) => res.json())
+              .then((data) => {
+                console.log(data.features[0]);
+                const temp_address = data.features[0].properties.address_line1;
+                setAddress(temp_address);
+                localStorage.setItem("userLocation", JSON.stringify(temp_address));
+              });
+          },
+          (error) => {
+            console.error("Error getting user location:", error);
+            fetch("/api/location").then(res => res.json()).then(/* handle fallback */);
+          }
+        );
+      } else {
+        console.log("Geolocation is not available");
+        // Fallback for browsers without support
+        fetch("/api/location").then(res => res.json()).then(/* handle fallback */);
+      }
+    }
+  }, []);
 
   function handleOpenDetails() {
     setIsDetailsOpened(!isDetailsOpened);
   }
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  }
+
+  const userName: string = auth.currentUser?.email || "Username";
 
   const headerDialog: {[string: string] : string} = {
       "Latest News": "/iconText/news.svg",
@@ -91,7 +121,7 @@ function UserOval(props: { recalibrate: () => void }) {
     <div className="flex-col gap-5 max-w-200px">
       <div className="flex flex-row gap-3 items-center bg-background text-foreground px-5 py-2 rounded-full">
         <Hamburger className="w-5 h-5 dark:invert" onClick={handleOpenDetails} />
-        <div> Username</div>
+        <div> {userName}</div>
         <div>|</div>
         <div> Reputation </div>
         <Image src="/starLogo.svg" alt="Star Logo" className={"dark:invert"} width={12} height={12} />
@@ -102,13 +132,13 @@ function UserOval(props: { recalibrate: () => void }) {
       </div>
 
       <div
-        className={`mt-2 bg-background text-foreground px-2 py-2 rounded-xl overflow-hidden transition-all duration-300 ${isDetailsOpened ? "max-h-48 opacity-100" : "max-h-0 opacity-0"} `}
+        className={`mt-2 bg-background text-foreground px-2 py-2 rounded-xl overflow-hidden transition-all duration-300 ${isDetailsOpened ? "opacity-100" : "max-h-0 opacity-0"} `}
       >
         <div className="grid grid-cols-2 gap-2 my-5 mx-5">
             {Object.entries(headerDialog).map(([key, value]) => (
                 <IconText
                     iconImage={value}
-                    onClick={()=>{}}
+                    onClick={() => {}}
                     className={""}
                 >
                     {key}
@@ -117,7 +147,7 @@ function UserOval(props: { recalibrate: () => void }) {
         </div>
 
         <div>
-          <div className="flex-col gap-5 items-center">
+          <div className="flex flex-col gap-2 items-center">
             <div className="text-center font-thin">Current Location: {address}</div>{" "}
 
             <div
@@ -125,6 +155,12 @@ function UserOval(props: { recalibrate: () => void }) {
               onClick={props.recalibrate}
             >
               Recalibrate
+            </div>
+
+            <div>
+                <PillButton onClick={handleLogout} className="rounded-full py-2 cursor-pointer">
+                    Log Out
+                </PillButton>
             </div>
           </div>
         </div>

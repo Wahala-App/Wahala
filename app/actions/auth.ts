@@ -1,58 +1,22 @@
-'use server';
+'use client';
 
-// import { supabaseClient } from "@/lib/supabase";
-// import type { User, Session } from "@supabase/supabase-js";
-
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  addDoc,
-  updateDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  where,
-  collection,
-  serverTimestamp,
-  orderBy,
-  limit
-} from "firebase/firestore";
+import { auth, db } from "../../lib/firebase"
+import { doc, setDoc } from "firebase/firestore";
 import {
   reload,
   updatePassword,
   sendPasswordResetEmail,
   sendEmailVerification,
   signOut,
-} from "firebase/auth";
-import {
   User,
-  getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
+  setPersistence,
+  browserSessionPersistence,
 } from "firebase/auth";
 
-import { Timestamp } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-const auth = getAuth();
 let credentials 
-
-
 
 export async function signup(
   firstName: string,
@@ -104,7 +68,7 @@ export async function signup(
 
 export async function checkEmailVerification() {
   try {
-    const credential = getAuth().currentUser;
+    const credential = auth.currentUser;
     if (credential) {
       await reload(credential);
 
@@ -123,13 +87,8 @@ export async function checkEmailVerification() {
 export async function resetPassword(email: string) {
   // Get the current user
   try {
-    const auth = getAuth();
     const user = auth.currentUser;
     console.log("In reset password");
-
-    // Optionally re-authenticate first (see below)
-
-    // Update password
 
     await sendPasswordResetEmail(auth, email);
     console.log("✅ Password reset email sent.");
@@ -140,49 +99,46 @@ export async function resetPassword(email: string) {
 
 export async function login(email: string, password: string) {
   try {
-    console.log(email);
-
-    let user_credentials = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
+    // console.log(email);
+    await setPersistence(auth, browserSessionPersistence);
+    const user_credentials = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
     );
 
-    await checkEmailVerification();
-    credentials = user_credentials.user;
-    console.log(credentials);
+    await checkEmailVerification();   
+
+    console.log("User Credentials", user_credentials.user);
 
   } catch (err: any) {
-    console.log(err)
+    console.log("LOGIN Error", err)
 
-    if (err?.code)
-    {
-    if (err.code.includes("auth/invalid-email")) {
-      throw { type: "email", message: "Invalid email" };
-    } else if (err.code.includes("auth/missing-password")) {
-      throw { type: "password", message: "Password required" };
-    } else if (err.code.includes("auth/invalid-credential")) {
-      throw {
-        type: "password",
-        message:
-          "Wrong password. Try again or " +
-          "click Forgot password to reset it.",
-      };
-    } else if (err.code.includes("auth/too-many-requests")) {
-      throw {
-        type: "login",
-        message: "Too many login attempts. Try again later.",
-      };
-    }
-  }
-    //Sends verification email and then is caught by handlelogin in login.vue which then routes it to verify.vue to check verificatrion
-    else if (err.type == "verify") {
-      const credential = getAuth().currentUser;
+    if (err?.code) {
+        if (err.code.includes("auth/invalid-email")) {
+            throw { type: "email", message: "Invalid email" };
+        } else if (err.code.includes("auth/missing-password")) {
+            throw { type: "password", message: "Password required" };
+        } else if (err.code.includes("auth/invalid-credential")) {
+            throw {
+                type: "password",
+                message:
+                "Wrong password. Try again or " +
+                "click Forgot password to reset it.",
+            };
+        } else if (err.code.includes("auth/too-many-requests")) {
+            throw {
+                type: "login",
+                message: "Too many login attempts. Try again later.",
+            };
+        }
+    } else if (err.type == "verify") {
+        const credential = auth.currentUser;
 
-      if (credential != null) {
-        await sendEmailVerification(credential);
-      }
-      throw err;
+        if (credential != null) {
+            await sendEmailVerification(credential);
+        }
+        throw err;
     } else {
       throw { type: "general", message: "Login error occured. Try again." };
     }
@@ -191,7 +147,6 @@ export async function login(email: string, password: string) {
 
 export async function logout() {
   try {
-    const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
@@ -200,7 +155,7 @@ export async function logout() {
     await signOut(auth);
     console.log("User was successfully logged out");
   } catch (err) {
-    console.log("Error occured loguot function");
+    console.log("Error occured logout function", err, auth);
   }
 }
 
@@ -210,8 +165,6 @@ export async function retrieveAuth () {
 
 export async function detectLoginState(): Promise<User> {
   try {
-    const auth = getAuth();
-
     return new Promise((resolve, reject) => {
       //If error wont go past if and ecerything ends if not error it continues accorlding
       const unsubscribe = onAuthStateChanged(auth, (user) => {

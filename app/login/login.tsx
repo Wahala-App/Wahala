@@ -3,66 +3,56 @@
 import { TitledTextInput } from "@/app/ui/TextInput";
 import { PillButton, RoundIconButton } from "@/app/ui/button";
 import Image from "next/image";
-import { login, signup } from "@/app/actions/auth";
-import { ErrorState, ErrorType, useLoading, handleUserState } from "@/src/contexts/AuthContext";
+import { login } from "@/app/actions/auth";
+import { useLoading, handleUserState } from "@/src/contexts/AuthContext";
 
 import { useRouter } from "next/navigation";
 import {useState} from "react";
 
 export default function LoginComponent() {
   const router = useRouter();
-  let isLoading = false;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   
-  const { setLoading } = useLoading(); // ← Get the setter
+  const { isLoading, setLoading } = useLoading();
   const { userState, setUserState } = handleUserState();
   
-const handleLogin = async () => {
-   
-    
-    setLoading(true); // ← Start loading
-    try{
-      if (!email.endsWith(".com")) {
-          setErrorMessage("Please enter a valid email");
-          return;
-      }
+    const handleLogin = async () => {
+        if (!isLoading) {
+            setLoading(true);
+            try{
+                if (!email.endsWith(".com")) {
+                    setErrorMessage("Please enter a valid email");
+                    return;
+                }
 
-      if (password.length < 6) {
-          setErrorMessage("Password must be at least 6 characters");
-          return;
-      }
+                if (password.length < 6) {
+                    setErrorMessage("Password must be at least 6 characters");
+                    return;
+                }
 
-       if (email.trim() === "" || password.trim() === "") 
-        {
-        throw  {type:"fill", message: "Please fill in all required fields."}
-      }
+                if (email.trim() === "" || password.trim() === "") {
+                    throw {type:"fill", message: "Please fill in all required fields."}
+                }
 
-      await login(email, password);
-     
-      setUserState("Signed In")
-      console.log(userState);
-  
-      router.push("/");
-      
-    }
-    catch (err: any) {
-    console.log(err)
-    //Ensures user verifies 
-        if (err.type =="verify")
-        {
-          router.push("/verify");
-          return;
+                await login(email, password);
+                
+                setUserState("Signed In")
+                router.push("/");
+            } catch (err: any) {
+                if (err.type =="verify") {
+                    router.push("/verify");
+                    return;
+                }
+            
+                console.log("Handle Login Err", err);
+            } finally {
+                setLoading(false);
+            }
         }
-     
-        console.log(err);
-      
-      } finally {
-        setLoading(false); // ← Start loading
-      }
-     
-  };
+    };
 
   return (
     <div className={"px-5 py-4"}>
@@ -102,6 +92,7 @@ const handleLogin = async () => {
           type="submit"
           className={"rounded-3xl"}
           onClick={handleLogin}
+          disabled={isLoading}
         >
           Login
         </PillButton>
