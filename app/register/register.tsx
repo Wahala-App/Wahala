@@ -111,7 +111,7 @@ export default function SignUpComponent() {
             <div>
                 Already have an account? <u><a href={"/login"}> Login.</a></u>
             </div>
-22
+
             <div className="flex gap-15 mt-6">
                 <RoundIconButton>
                     <Image

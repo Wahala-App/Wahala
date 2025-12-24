@@ -120,7 +120,7 @@ export async function checkEmailVerification() {
   }
 }
 
-export async function resetPassword(email) {
+export async function resetPassword(email: string) {
   // Get the current user
   try {
     const auth = getAuth();
@@ -152,8 +152,8 @@ export async function login(email: string, password: string) {
     credentials = user_credentials.user;
     console.log(credentials);
 
-    //return credentials;
   } catch (err: any) {
+    console.log(err)
 
     if (err?.code)
     {
