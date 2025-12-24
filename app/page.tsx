@@ -1,26 +1,31 @@
 "use client";
 
-import { useAuth } from "./contexts/AuthContext";
+// import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import HomeComponent from "./home/home";
 import Loading from "./loading";
+import {login, signup } from "@/app/actions/auth";
+import { useLoading, handleUserState } from "@/src/contexts/AuthContext";
 
 export default function Home() {
-  const { isAuthenticated, isLoaded } = useAuth();
-  const router = useRouter();
+   const router = useRouter();
+   
+  const { isLoading, setLoading } = useLoading();
+  const { userState } = handleUserState();
+  console.log(userState);
 
   useEffect(() => {
-    if (isLoaded && !isAuthenticated) {
+    if (!isLoading && userState !== "Signed In") {
       router.push("/login");
     }
-  }, [isLoaded, isAuthenticated, router]);
+  }, [isLoading, userState, router]);
 
-  if (!isLoaded) {
+  if (isLoading) {
     return <Loading />;
   }
 
-  if (isAuthenticated) {
+  if (userState === "Signed In") {
     return <HomeComponent />;
   }
 

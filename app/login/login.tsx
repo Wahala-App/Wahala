@@ -1,99 +1,142 @@
 "use client";
 
 import { TitledTextInput } from "@/app/ui/TextInput";
-import { PillButton, DefaultButton, ButtonProps } from "@/app/ui/button";
+import { PillButton, RoundIconButton } from "@/app/ui/button";
 import Image from "next/image";
-import clsx from "clsx";
-import { useAuth } from "@/app/contexts/AuthContext";
+import { login, signup } from "@/app/actions/auth";
+import { ErrorState, ErrorType, useLoading, handleUserState } from "@/src/contexts/AuthContext";
+
 import { useRouter } from "next/navigation";
+import {useState} from "react";
 
 export default function LoginComponent() {
-  const { login } = useAuth();
   const router = useRouter();
+  let isLoading = false;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  
+  const { setLoading } = useLoading(); // ← Get the setter
+  const { userState, setUserState } = handleUserState();
+  
+const handleLogin = async () => {
+   
+    
+    setLoading(true); // ← Start loading
+    try{
+      if (!email.endsWith(".com")) {
+          setErrorMessage("Please enter a valid email");
+          return;
+      }
 
-  const handleCreateAccount = () => {
-    login();
-    router.push("/");
+      if (password.length < 6) {
+          setErrorMessage("Password must be at least 6 characters");
+          return;
+      }
+
+       if (email.trim() === "" || password.trim() === "") 
+        {
+        throw  {type:"fill", message: "Please fill in all required fields."}
+      }
+
+      await login(email, password);
+     
+      setUserState("Signed In")
+      console.log(userState);
+  
+      router.push("/");
+      
+    }
+    catch (err: any) {
+    console.log(err)
+    //Ensures user verifies 
+        if (err.type =="verify")
+        {
+          router.push("/verify");
+          return;
+        }
+     
+        console.log(err);
+      
+      } finally {
+        setLoading(false); // ← Start loading
+      }
+     
   };
 
   return (
-    <>
+    <div className={"px-5 py-4"}>
       <div className="text-4xl font-bold mb-8">
         {" "}
-        {/*Line by Itself*/}
-        Sign Up
+        Log In
       </div>
 
       <div className="text-xl font-black mb-8">
         Welcome to Wahala! Knowledge lights the way to safety
       </div>
 
-      <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <TitledTextInput
+          className={"mb-4"}
           title={"Email Address"}
           type={"email"}
           placeholder={"Email Address"}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <TitledTextInput
+          className={"mb-4"}
           title={"Password"}
           type={"password"}
           placeholder={"Password"}
+          onChange={(e) => setPassword(e.target.value)}
         />
       </div>
+
+      {
+          errorMessage !== "" &&
+          <div className={"text-red-400 mb-2"}>{errorMessage}</div>
+      }
 
       <div className="mb-8">
         <PillButton
           type="submit"
           className={"rounded-3xl"}
-          onClick={handleCreateAccount}
+          onClick={handleLogin}
         >
-          Create Account
+          Login
         </PillButton>
       </div>
 
       <div>
-        Already have an account? {/*Wrap with link to something*/}Log In
+          Don't have an account? <u><a href={"/register"}> Create Account.</a></u>
       </div>
 
       <div className="flex gap-15 mt-6">
-        <RoundIconLoginButton>
+        <RoundIconButton>
           <Image
             src={"/socialMedia/google.svg"}
             alt={"Google Logo"}
             width={30}
-            height={25}
+            height={30}
           />
-        </RoundIconLoginButton>
-        <RoundIconLoginButton className="dark:invert">
-          <Image src={"/socialMedia/apple.svg"} alt={"Apple Logo"} width={30} height={25} />
-        </RoundIconLoginButton>
-        <RoundIconLoginButton>
+        </RoundIconButton>
+        <RoundIconButton className="dark:invert">
+          <Image
+              src={"/socialMedia/apple.svg"}
+              alt={"Apple Logo"}
+              width={30}
+              height={30}
+          />
+        </RoundIconButton>
+        <RoundIconButton>
           <Image
             src={"/socialMedia/facebook.svg"}
             alt={"Facebook Logo"}
             width={30}
-            height={25}
+            height={30}
           />
-        </RoundIconLoginButton>
+        </RoundIconButton>
       </div>
-    </>
-  );
-}
-
-function RoundIconLoginButton({
-  children,
-  className,
-  ...otherProps
-}: ButtonProps) {
-  return (
-    <DefaultButton
-      {...otherProps}
-      className={clsx(
-        className,
-        "w-12 h-12 rounded-full hover:bg-hover flex items-center justify-center text-lg",
-      )}
-    >
-      {children}
-    </DefaultButton>
+    </div>
   );
 }

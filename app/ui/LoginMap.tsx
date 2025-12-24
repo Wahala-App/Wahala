@@ -7,6 +7,7 @@ export default function MapImage() {
         src={"/loginMap.svg"}
         alt={"Login Map"}
         fill
+        priority
         className="object-cover"
       />
     </div>
