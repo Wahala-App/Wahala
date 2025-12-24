@@ -227,8 +227,10 @@ export async function detectLoginState(): Promise<User> {
       });
     });
   } catch (err) {
-    if (err.type == "login") {
-      throw err;
+    const error = err as any;
+
+    if (error.type == "login") {
+      throw error;
     } else {
       console.log("Error in detecting login state: ", err);
       throw { type: "general", message: "There was an error. Try again." };
