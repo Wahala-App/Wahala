@@ -5,9 +5,8 @@ import {PillButton, RoundIconButton} from "@/app/ui/button";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {useState} from "react";
-import { useAuth } from "@/src/contexts/AuthContext";
-import {login, signup } from "@/app/actions/auth";
-import { appendSegmentCacheKeyPart } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
+import { signup } from "@/app/actions/auth";
+
 export default function SignUpComponent() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
@@ -17,7 +16,6 @@ export default function SignUpComponent() {
     const [errorMessage, setErrorMessage] = useState("");
 
     const router = useRouter();
-
     
     const handleRegister = async () => {
         setErrorMessage("");
@@ -32,14 +30,8 @@ export default function SignUpComponent() {
             return;
         }
        
-        console.log(firstName)
-        console.log(lastName)
-        console.log(email)
-        console.log(password)
-       await signup(firstName, lastName, email, password);
+        await signup(firstName, lastName, email, password);
         
-       
-
         console.log("Successfully registered!");
         router.push("/login");
     }

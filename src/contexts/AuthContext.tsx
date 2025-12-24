@@ -1,158 +1,8 @@
 'use client';
 
-// import { createContext, useContext, useState, ReactNode } from 'react';
-
-// import { initializeApp } from "firebase/app";
-// import {
-//   getFirestore,
-//   doc,
-//   setDoc,
-//   addDoc,
-//   updateDoc,
-//   getDoc,
-//   getDocs,
-//   deleteDoc,
-//   query,
-//   where,
-//   collection,
-//   serverTimestamp,
-//   orderBy,
-//   limit
-// } from "firebase/firestore";
-// import {
-//   reload,
-//   updatePassword,
-//   sendPasswordResetEmail,
-//   sendEmailVerification,
-//   signOut,
-// } from "firebase/auth";
-// import {
-//   User,
-//   getAuth,
-//   createUserWithEmailAndPassword,
-//   signInWithEmailAndPassword,
-//   onAuthStateChanged,
-// } from "firebase/auth";
-
-// export type ErrorType =
-//   | "general"
-//   | "fill"
-//   | "email"
-//   | "password"
-//   | "login"
-//   | "signup"
-//   | "quiz"
-//   | "data"
-//   | "product"
-//   | "verify"
-//   | "database";
-
-// export type ErrorState = Record<ErrorType, string>;
-
-// const initialError: ErrorState = {
-//   general: "", fill: "", email: "", password: "", signup: "",
-//   login: "",   quiz: "", data: "", product: "", verify: "", database: ""
-// };// 1. The object that holds every error message
-
-//   const [errors, setErrors] = useState<ErrorState>(initialError);
-
-//   // 2. The key of the *last* error that was set 
-//   const [pastErrorType, setPastErrorType] = useState<ErrorType>("general");
-
-// export async function useErrorStore() {
-
-//   const clearError = useCallback(() => {
-//     console.log("Past error is ", pastErrorType);               // DEBUG
-//     setErrors(prev => ({
-//       ...prev,
-//       [pastErrorType]: ""                                      // ← clears only that field
-//     }));
-//   }, [pastErrorType]);                                         // ← re-create only if key changes
-
-//   // 4. Helper to set an error (so the key is remembered)
-//   const setError = (type: ErrorType, message: string) => {
-//     setErrors(prev => ({ ...prev, [type]: message }));
-//     setPastErrorType(type);   // remember which field we just wrote to
-//   };
-
-//   return { errors, pastErrorType, clearError, setError };
-// }
-
-// type LoadingContextType = {
-//   isLoading: boolean;
-//   setLoading: (loading: boolean) => void;
-// };
-
-
-// const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
-
-// export function LoadingProvider({ children }: { children: ReactNode }) {
-//   const [isLoading, setLoading] = useState(false);
-//   return (
-//     <LoadingContext.Provider value={{ isLoading, setLoading }}>
-//       {children}
-//     </LoadingContext.Provider>
-//   );
-// }
-
-// export function useLoading() {
-//   const context = useContext(LoadingContext);
-//   if (!context) throw new Error('useLoading must be used within LoadingProvider');
-//   return context;
-// }
-
-// type AuthContextType = {
-//   isLoading: boolean;
-//   setLoading: (loading: boolean) => void;
-// };
-
-// const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// export function AuthProvider({ children }: { children: ReactNode }) {
-//   const [isLoading, setLoading] = useState(false);
-//   return (
-//     <AuthContext.Provider value={{ isLoading, setLoading }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// }
-
-// app/contexts/AuthContext.tsx
-
-
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  addDoc,
-  updateDoc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  where,
-  collection,
-  serverTimestamp,
-  orderBy,
-  limit
-} from "firebase/firestore";
-import {
-  reload,
-  updatePassword,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  signOut,
-} from "firebase/auth";
-import {
-  User,
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export type ErrorType =
   | "general"
@@ -196,8 +46,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // All hooks MUST be inside this component
   const [errors, setErrors] = useState<ErrorState>(initialError);
   const [pastErrorType, setPastErrorType] = useState<ErrorType>("general");
-  const [isLoading, setLoading] = useState(false);
+  const [isLoading, setLoading] = useState(true);
   const [userState, setUserState] = useState<StateType>("Signed Out");
+
+  useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user === null) {
+      setUserState("Signed Out")
+    } else {
+      setUserState("Signed In")
+    }
+    setLoading(false); // Move this inside the callback
+  })
+  
+  return unsubscribe; // Clean up the listener
+}, []);
   
   const setError = useCallback((type: ErrorType, message: string) => {
     setErrors(prev => ({ ...prev, [type]: message }));
