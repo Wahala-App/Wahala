@@ -1,18 +1,17 @@
 "use client";
 
 import React, {Suspense, useEffect, useRef, useState} from "react";
-import HomeComponents from "./HomeComponents";
-import Loading from "./loading";
+import SearchAndAdd from "./SearchAndAdd";
+import Loading from "./Loading";
 import MapComponent from "../map/map";
 import Hamburger from "../ui/hamburger";
 import Image from "next/image";
-import {Incident} from "@/app/api/types";
+import {Incident, Location} from "@/app/api/types";
 import {IconText} from "@/app/ui/IconText";
 import { PillButton } from "../ui/button";
 import { auth } from "@/lib/firebase";
 import { logout } from "../actions/auth";
 import { useRouter } from "next/navigation";
-import { handleUserState } from "@/src/contexts/AuthContext";
 
 export default function HomeComponent() {
   const mapRef = useRef<{
@@ -21,6 +20,11 @@ export default function HomeComponent() {
         incident: Incident,
     ) => void;
   }>(null);
+
+  const addRef = useRef<{
+    openDialog: (location: Location) => void;
+  }>(null);
+
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
     null,
   );
@@ -28,6 +32,10 @@ export default function HomeComponent() {
   const handleRecalibrate = () => {
     mapRef.current?.recalibrateLocation();
   };
+
+  const handlePinAddition = (lat: number, lon: number) => {
+    addRef.current?.openDialog({ latitude: lat, longitude: lon });
+  }
 
   const handleMarkerClick = (incidentId: string) => {
     console.log("Marker clicked:", incidentId);
@@ -38,18 +46,15 @@ export default function HomeComponent() {
     <div className="h-screen">
       <div className="flex h-full">
         <div className="flex-[0.4] flex flex-col items-center justify-center w-9/10">
-          <HomeComponents
-            addCustomMarker={(
-                incident: Incident
-            ) =>
-              mapRef.current?.addCustomMarker(incident)
-            }
+          <SearchAndAdd
+            addRef = {addRef}
+            addCustomMarker={ (incident: Incident) => {mapRef.current?.addCustomMarker(incident)}}
             selectedIncidentId={selectedIncidentId}
           />
         </div>
         <div className="flex-[0.6]">
           <Suspense fallback={<Loading />}>
-            <MapComponent ref={mapRef} onMarkerClick={handleMarkerClick} />
+            <MapComponent ref={mapRef} onMarkerClick={handleMarkerClick} onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}/>
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval recalibrate={handleRecalibrate} />
             </div>

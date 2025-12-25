@@ -14,13 +14,17 @@ import { DefaultButton } from "../ui/button";
 import Image from "next/image";
 import Loading from "./loading";
 
-const MapComponent = forwardRef<
-  {
+interface MapRef {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
-  },
-  { onMarkerClick?: (incidentId: string) => void }
->(function MapComponent({ onMarkerClick }, ref) {
+}
+
+interface MapProps {
+    onMarkerClick?: (incidentId: string) => void;
+    onPositionClick?: (lat: number, lon: number) => void;
+}
+
+const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerClick, onPositionClick }, ref) => {
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
     latitude: number;
@@ -99,6 +103,13 @@ const MapComponent = forwardRef<
           }),
         );
 
+        mapRef.current.on('click', (e) => {
+            const coordinates = e.lngLat.wrap();
+            if (onPositionClick) {
+                onPositionClick(coordinates.lat, coordinates.lng);
+            }
+        })
+
         // Wait for the map to finish its initial render
         mapRef.current.once &&
           mapRef.current.once("load", () => {
@@ -116,7 +127,6 @@ const MapComponent = forwardRef<
   useEffect(() => {
     initializeMap();
 
-    // Cleanup function to remove map when component unmounts
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();

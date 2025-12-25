@@ -1,4 +1,4 @@
-import { IncidentType } from "../api/types";
+import { IncidentType, Location } from "../api/types";
 
 // Default fallback location: Statesboro, GA
 export const FALLBACK_LOCATION = {
@@ -6,10 +6,7 @@ export const FALLBACK_LOCATION = {
   longitude: -81.7856512,
 };
 
-export default function getCurrLocation(): Promise<{
-  latitude: number;
-  longitude: number;
-}> {
+export default function getCurrLocation(): Promise<Location> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       // Fallback coordinates if geolocation is not supported

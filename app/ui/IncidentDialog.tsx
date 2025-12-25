@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { IncidentType } from "../api/types";
+import { IncidentType, Location } from "../api/types";
 import { TextInput } from "./TextInput";
 import { PillButton, DefaultButton } from "./button";
+import getCurrLocation from "../map/mapUtils"
 
 interface IncidentDialogProps {
   isOpen: boolean;
@@ -12,9 +13,10 @@ interface IncidentDialogProps {
     incidentType: IncidentType;
     title: string;
     description?: string;
-    location: { latitude: number; longitude: number };
+    location: Location;
   }) => void;
   selectedIncidentType?: IncidentType;
+  providedLocation : Location | null;
 }
 
 export function IncidentDialog({
@@ -22,6 +24,7 @@ export function IncidentDialog({
   onClose,
   onSubmit,
   selectedIncidentType,
+  providedLocation,
 }: IncidentDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [incidentType, setIncidentType] = useState<IncidentType>(
@@ -29,21 +32,25 @@ export function IncidentDialog({
   );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [location, setLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
 
   useEffect(() => {
     if (dialogRef.current) {
       if (isOpen) {
         dialogRef.current.showModal();
-        getCurrentLocation();
+        if (!providedLocation) {
+            getCurrLocation().then(
+                (currLocation) => setLocation(currLocation)
+            );
+        } else {
+            setLocation(providedLocation);
+            console.log("Provided Location", providedLocation, location);
+        }
       } else {
         dialogRef.current.close();
       }
     }
-  }, [isOpen]);
+  }, [isOpen, providedLocation]);
 
   useEffect(() => {
     if (selectedIncidentType) {
@@ -51,45 +58,29 @@ export function IncidentDialog({
     }
   }, [selectedIncidentType]);
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        () => {
-          setLocation({ latitude: 32.4173824, longitude: -81.7856512 });
-        }
-      );
-    } else {
-      setLocation({ latitude: 32.4173824, longitude: -81.7856512 });
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !location) return;
+    if (!title.trim() || (!(location) && !(providedLocation))) {
+        onClose();
+    }
 
     onSubmit({
       incidentType,
       title: title.trim(),
       description: description.trim() || undefined,
-      location,
+      location: location!,
     });
 
-    setTitle("");
-    setDescription("");
-    setIncidentType(IncidentType.OTHER);
-    onClose();
+    handleClose()
   };
 
   const handleClose = () => {
     setTitle("");
     setDescription("");
-    setIncidentType(selectedIncidentType || IncidentType.OTHER);
+    setIncidentType(IncidentType.OTHER);
+    setLocation(null);
+    providedLocation = null;
     onClose();
   };
 
