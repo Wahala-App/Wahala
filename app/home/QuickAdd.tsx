@@ -7,14 +7,14 @@ import { incidentToIcon } from "../map/mapUtils";
 
 export interface QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
-  onIncidentAdded?: () => void;
+  onIncidentChanged?: () => void;
 }
 
 interface QuickAddRef {
   openDialog: (currentLocation: Location) => void;
 }
 
-export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarker, onIncidentAdded }, ref) => {
+export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarker, onIncidentChanged }, ref) => {
   const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -40,8 +40,8 @@ export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarke
       
       const newIncident = await response.json();
       addCustomMarker(newIncident); // Update Map
-      if (onIncidentAdded) {
-        onIncidentAdded();
+      if (onIncidentChanged) {
+        onIncidentChanged();
       }
     } catch (error) {
       console.error('Error creating incident:', error);

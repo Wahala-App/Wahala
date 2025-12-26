@@ -150,3 +150,23 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const body = await request.json();
+        const incidents = loadIncidents();
+
+        const incidentToDelete: Incident = incidents.filter((incident, idx) => incident.id === body.id)[0];
+
+        const updatedIncidents = incidents.filter((incident, idx) => incident.id != body.id);
+        saveIncidents(updatedIncidents);
+
+        return NextResponse.json(incidentToDelete, { status: 200 });
+    } catch (error) {
+        console.error('Error deleting incident:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete incident' },
+            { status: 400 }
+        );
+    }
+}
