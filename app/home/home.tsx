@@ -16,18 +16,18 @@ import { useRouter } from "next/navigation";
 export default function HomeComponent() {
   const mapRef = useRef<{
     recalibrateLocation: () => void;
-    addCustomMarker: (
-        incident: Incident,
-    ) => void;
+    addCustomMarker: (incident: Incident) => void;
+    refreshMarkers: () => void;
   }>(null);
 
   const addRef = useRef<{
     openDialog: (location: Location) => void;
   }>(null);
 
-  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
-    null,
-  );
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  const triggerRefresh = () => setRefreshCount((prev) => prev + 1);
 
   const handleRecalibrate = () => {
     mapRef.current?.recalibrateLocation();
@@ -37,10 +37,27 @@ export default function HomeComponent() {
     addRef.current?.openDialog({ latitude: lat, longitude: lon });
   }
 
-  const handleMarkerClick = (incidentId: string) => {
-    console.log("Marker clicked:", incidentId);
-    setSelectedIncidentId(incidentId);
+  const handleMarkerPrimaryClick = (incidentId: string) => {
+    //console.log("Marker clicked:", incidentId);
+    setSelectedIncidentId((prev) => prev === null ? incidentId : null);
   };
+
+  const handleMarkerSecondaryClick = async (incidentId: string) => {
+    console.log("Marker right clicked:", incidentId);
+    try {
+        const response = await fetch('/api/incidents', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({id : incidentId})
+        });
+        triggerRefresh()
+        mapRef.current?.refreshMarkers();
+    } catch (error) {
+        console.error('Error creating incident:', error);
+    } finally {
+        if (incidentId == selectedIncidentId) { setSelectedIncidentId(null) }
+    }
+  }
 
   return (
     <div className="h-screen">
@@ -49,12 +66,14 @@ export default function HomeComponent() {
           <SearchAndAdd
             addRef = {addRef}
             addCustomMarker={ (incident: Incident) => {mapRef.current?.addCustomMarker(incident)}}
+            onIncidentChanged={triggerRefresh}
+            incidentTrigger={refreshCount}
             selectedIncidentId={selectedIncidentId}
           />
         </div>
         <div className="flex-[0.6]">
           <Suspense fallback={<Loading />}>
-            <MapComponent ref={mapRef} onMarkerClick={handleMarkerClick} onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}/>
+            <MapComponent ref={mapRef} onMarkerPrimaryClick={handleMarkerPrimaryClick} onMarkerSecondaryClick={handleMarkerSecondaryClick} onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}/>
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval recalibrate={handleRecalibrate} />
             </div>

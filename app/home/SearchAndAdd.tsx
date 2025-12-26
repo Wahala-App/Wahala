@@ -5,14 +5,15 @@ import { QuickAdd, QuickAddProps } from "./QuickAdd";
 
 interface SearchAndAddProps extends IncidentSearchProps, QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
+  onIncidentChanged: () => void;
+  incidentTrigger: number;
   selectedIncidentId?: string | null;
 }
 
 export default function SearchAndAdd(
-     { addCustomMarker, selectedIncidentId, addRef }: SearchAndAddProps & { addRef: any }
+     { addCustomMarker, onIncidentChanged, selectedIncidentId, incidentTrigger, addRef }: SearchAndAddProps & { addRef: any }
 ) {
   // Logic: Coordinate data refresh between siblings
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     // Note: This timeout is a bit fragile (race condition risk with map load).
@@ -29,7 +30,6 @@ export default function SearchAndAdd(
     return () => clearTimeout(timer);
   }, [addCustomMarker]);
 
-  const triggerRefresh = () => setRefreshTrigger((prev) => prev + 1);
 
   return (
     <div className="flex flex-col gap-10 p-10 h-screen overflow-hidden">
@@ -37,7 +37,7 @@ export default function SearchAndAdd(
       <div className="flex-[0.70] min-h-0">
         <IncidentSearch 
           selectedIncidentId={selectedIncidentId} 
-          refreshTrigger={refreshTrigger} 
+          incidentTrigger={incidentTrigger} 
         />
       </div>
 
@@ -46,7 +46,7 @@ export default function SearchAndAdd(
         <QuickAdd
           ref = {addRef}
           addCustomMarker={addCustomMarker} 
-          onIncidentAdded={triggerRefresh} 
+          onIncidentChanged={onIncidentChanged} 
         />
       </div>
     </div>

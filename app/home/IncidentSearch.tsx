@@ -6,10 +6,10 @@ import { TextInput } from "../ui/TextInput";
 
 export interface IncidentSearchProps {
   selectedIncidentId?: string | null;
-  refreshTrigger?: number | null;
+  incidentTrigger?: number | null;
 }
 
-export function IncidentSearch({ selectedIncidentId, refreshTrigger }: IncidentSearchProps) {
+export function IncidentSearch({ selectedIncidentId, incidentTrigger }: IncidentSearchProps) {
   const [nearbyIncidents, setNearbyIncidents] = useState<Incident[]>([]);
   const [selectedIncidentType, setSelectedIncidentType] = useState<IncidentType | null>(null);
 
@@ -26,7 +26,7 @@ export function IncidentSearch({ selectedIncidentId, refreshTrigger }: IncidentS
     };
     fetchIncidents(); 
     // TODO : IMPLEMENT API FOR GETTING NEARBY INCIDENTS
-  }, [refreshTrigger]);
+  }, [incidentTrigger]);
 
   return (
     <div className="card h-full flex flex-col">

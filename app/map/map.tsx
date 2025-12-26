@@ -17,14 +17,16 @@ import Loading from "./loading";
 interface MapRef {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
+    refreshMarkers: () => void;
 }
 
 interface MapProps {
-    onMarkerClick?: (incidentId: string) => void;
+    onMarkerPrimaryClick?: (incidentId: string) => void;
+    onMarkerSecondaryClick?: (incidentId: string) => void;
     onPositionClick?: (lat: number, lon: number) => void;
 }
 
-const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerClick, onPositionClick }, ref) => {
+const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMarkerSecondaryClick, onPositionClick }, ref) => {
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
     latitude: number;
@@ -46,12 +48,18 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerClick, onPositionC
 
     const lat = incident.location.latitude;
     const lng = incident.location.longitude;
-    console.log("Adding custom marker at:", lat, lng);
+    //console.log("Adding custom marker at:", lat, lng);
 
     const el = incidentIcon(incident.incidentType)
 
-    if (incident.id && onMarkerClick) {
-      el.addEventListener("click", () => onMarkerClick(incident.id));
+    if (incident.id) {
+        if (onMarkerPrimaryClick) {
+            el.addEventListener("click", () => onMarkerPrimaryClick(incident.id));
+        }
+
+        if (onMarkerSecondaryClick) {
+            el.addEventListener("contextmenu", () => onMarkerSecondaryClick(incident.id));
+        }
     }
 
     new Marker({
@@ -62,9 +70,19 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerClick, onPositionC
       .addTo(mapRef.current);
   };
 
+  const refreshMarkers = async () => {
+      document.querySelectorAll('.maplibregl-marker').forEach(marker => marker.remove());
+  
+        // Refetch and add markers
+        const response = await fetch('/api/incidents');
+        const incidents: Incident[] = await response.json();
+        incidents.forEach(incident => addCustomMarker(incident));
+    }
+
   useImperativeHandle(ref, () => ({
     recalibrateLocation,
     addCustomMarker,
+    refreshMarkers,
   }));
 
   const initializeMap = async () => {
@@ -104,6 +122,9 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerClick, onPositionC
         );
 
         mapRef.current.on('click', (e) => {
+            const target = e.originalEvent.target as Element;
+            if (!target || target.closest('.maplibregl-marker')) return;
+
             const coordinates = e.lngLat.wrap();
             if (onPositionClick) {
                 onPositionClick(coordinates.lat, coordinates.lng);
