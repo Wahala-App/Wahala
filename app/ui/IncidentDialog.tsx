@@ -15,7 +15,7 @@ interface IncidentDialogProps {
     description?: string;
     location: Location;
   }) => void;
-  selectedIncidentType?: IncidentType;
+  selectedIncidentType: IncidentType;
   providedLocation : Location | null;
 }
 
@@ -27,9 +27,7 @@ export function IncidentDialog({
   providedLocation,
 }: IncidentDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [incidentType, setIncidentType] = useState<IncidentType>(
-    selectedIncidentType || IncidentType.OTHER
-  );
+  const [incidentType, setIncidentType] = useState<IncidentType>(selectedIncidentType);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
@@ -61,6 +59,10 @@ export function IncidentDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (incidentType === IncidentType.NONE) {
+        return;
+    }
+
     if (!title.trim() || (!(location) && !(providedLocation))) {
         onClose();
     }

@@ -33,18 +33,17 @@ export function IncidentSearch({ selectedIncidentId, incidentTrigger }: Incident
       <div className="text-3xl font-bold mb-4">Search for nearby alerts</div>
       <TextInput type="search" placeholder="Search" title="Search" />
 
-      {/* Filter Buttons */}
       <div className="gap-4 flex flex-wrap mb-8">
-        {Object.values(IncidentType).map((incident) => (
-          <DefaultButton
-            key={incident}
-            className={`rounded-full px-2 outline outline-1 outline-foreground hover:bg-foreground hover:text-background ${
-              selectedIncidentType === incident ? " bg-foreground text-background" : " bg-background text-foreground"
-            }`}
-            onClick={() => setSelectedIncidentType(prev => prev === incident ? null : incident)}
-          >
-            {incident}
-          </DefaultButton>
+        {Object.values(IncidentType).filter(incident => incident !== IncidentType.NONE).map((incident) =>(
+           <DefaultButton
+                key={incident}
+                className={`rounded-full px-2 outline outline-1 outline-foreground hover:bg-foreground hover:text-background ${
+                selectedIncidentType === incident ? " bg-foreground text-background" : " bg-background text-foreground"
+                }`}
+                onClick={() => setSelectedIncidentType(prev => prev === incident ? null : incident)}
+            >
+                {incident}
+            </DefaultButton>
         ))}
       </div>
 

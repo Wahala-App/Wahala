@@ -34,7 +34,7 @@ export default function SearchAndAdd(
   return (
     <div className="flex flex-col gap-10 p-10 h-screen overflow-hidden">
       {/* Top Section: Search & List */}
-      <div className="flex-[0.70] min-h-0">
+      <div className="flex-[0.80] min-h-0">
         <IncidentSearch 
           selectedIncidentId={selectedIncidentId} 
           incidentTrigger={incidentTrigger} 
@@ -42,7 +42,7 @@ export default function SearchAndAdd(
       </div>
 
       {/* Bottom Section: Actions */}
-      <div className="flex-[0.30]">
+      <div className="flex-[0.20]">
         <QuickAdd
           ref = {addRef}
           addCustomMarker={addCustomMarker} 
