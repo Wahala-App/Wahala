@@ -1,9 +1,7 @@
 import { useState, forwardRef, useImperativeHandle } from "react";
-import Image from "next/image";
 import { PillButton, DefaultButton } from "../ui/button";
 import { IncidentDialog } from "../ui/IncidentDialog";
 import { Incident, IncidentType, Location} from "../api/types";
-import { incidentToIcon } from "../map/mapUtils";
 
 export interface QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
@@ -15,7 +13,6 @@ interface QuickAddRef {
 }
 
 export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarker, onIncidentChanged }, ref) => {
-  const [selectedIncident, setSelectedIncident] = useState<IncidentType | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -51,7 +48,6 @@ export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarke
   };
 
   const handleClose = () => {
-    setSelectedIncident(null);
     setLocation(null);
     setIsDialogOpen(false);
   }
@@ -59,42 +55,20 @@ export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarke
   return (
     <div className="card mb-5">
       <div className="text-3xl font-bold mb-8">Quick Add</div>
-      
-      {/* Grid of Types */}
-      <div className="text-xl font-black mb-8 grid grid-rows-2 gap-4 grid-cols-4">
-        {Object.values(IncidentType).map((item) => (
-          <div key={item}>
-            <DefaultButton
-              className={`rounded-full p-4 shadow-lg outline outline-1 outline-foreground hover:bg-foreground hover:text-background ${
-                selectedIncident === item ? "bg-foreground text-background" : "bg-background text-foreground"
-              }`}
-              onClick={() => setSelectedIncident(prev => prev === item ? null : item)}
-            >
-              <Image 
-                src={incidentToIcon(item)} 
-                alt={item} 
-                width={40} height={40} 
-                className={selectedIncident === item ? "filter invert dark:invert-0" : "dark:invert"} 
-              />
-            </DefaultButton>
-          </div>
-        ))}
-      </div>
 
       <PillButton
         title="Quick Add"
         onClick={() => setIsDialogOpen(true)}
         className="rounded-full"
-        disabled={!selectedIncident}
       >
-        <div className="font-bold text-l"> + Add </div>
+        <div className="font-bold text-l"> Report Incident at Current Location </div>
       </PillButton>
 
       <IncidentDialog
         isOpen={isDialogOpen}
         onClose={handleClose}
         onSubmit={handleDialogSubmit}
-        selectedIncidentType={selectedIncident || undefined}
+        selectedIncidentType={IncidentType.NONE}
         providedLocation={location}
       />
     </div>

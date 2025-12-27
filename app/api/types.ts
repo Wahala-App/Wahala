@@ -8,6 +8,7 @@ export interface Incident {
 }
 
 export enum IncidentType {
+  NONE = "",
   ROBBERY = "Robbery",
   ASSAULT = "Assault",
   THEFT = "Theft",
