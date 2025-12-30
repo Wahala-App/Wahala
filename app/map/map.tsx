@@ -4,6 +4,7 @@ import { AttributionControl, Map, Marker } from "maplibre-gl";
 import {
   useEffect,
   useRef,
+  useCallback,
   useState,
   forwardRef,
   useImperativeHandle,
@@ -44,6 +45,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
   const addCustomMarker = (
     incident: Incident
   ) => {
+
     if (!mapRef.current) return;
 
     const lat = incident.location.latitude;
@@ -78,6 +80,8 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
         const incidents: Incident[] = await response.json();
         incidents.forEach(incident => addCustomMarker(incident));
     }
+
+    
 
   useImperativeHandle(ref, () => ({
     recalibrateLocation,
@@ -156,6 +160,57 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
     };
   }, []);
 
+
+  
+  //  const [refreshKey, setRefreshKey] = useState(0);
+  //  const fetchLocationPins = useCallback ( async () => {
+  //       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  //       console.log(timeZone); // e.g., "America/New_York"
+
+  //       const now = new Date();
+  //       const  today= formatInTimeZone(now, timeZone, 'yyyy-MM-dd');
+  
+  //       try {
+  //         await fetch('/api/incidents', { method: 'PUT' }); //Resets list of locally stored pin ids and cache
+
+  //         let pins = await retrieveLocationPins(today);
+        
+  //         for (const pin of pins)
+  //         {
+
+  //               const response = await fetch('/api/incidents', {
+  //               method: 'POST',
+  //               headers: { 'Content-Type': 'application/json' },
+  //                body: JSON.stringify(pin)
+  //                });
+  
+  //                if (response.ok) {
+  //                 const newIncident = await response.json(); 
+  //                 console.log("Here is your new incident:", newIncident);
+  //                 addCustomMarker(newIncident);
+  //               }
+  //               else
+  //               {
+  //                 console.log("Response is not ok!: ")
+  //               } 
+  //             }
+  
+  //       } catch (err) {
+  //         console.log(err);
+  //       }
+  //     }, []); // This will now work perfectly alongside your map effect
+  
+  //   // Run on mount AND whenever refreshKey changes
+  // useEffect(() => {
+  //   fetchLocationPins();
+  // }, [refreshKey, fetchLocationPins]);
+
+  // // Public function to trigger refresh manually
+  // const refreshPins = () => {
+  //   setRefreshKey(prev => prev + 1);
+  // };
+  
+  
   return (
     <div className="h-full flex flex-col">
       <div id="map" className="w-full h-full overflow-hidden relative">

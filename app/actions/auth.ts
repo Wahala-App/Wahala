@@ -16,8 +16,23 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 
-let credentials 
+let credentials
+// Function to get the current user's fresh ID token
+export async function getToken(): Promise<string | null> {
+  const user = auth.currentUser;
+  if (!user) {
+    console.log('No user logged in');
+    return null;
+  }
 
+  try {
+    const idToken = await user.getIdToken(); // Automatically refreshes if needed
+    return idToken;
+  } catch (error) {
+    console.error('Error getting ID token:', error);
+    return null;
+  }
+}
 export async function signup(
   firstName: string,
   lastName: string,

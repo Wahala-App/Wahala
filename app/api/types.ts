@@ -1,10 +1,10 @@
 export interface Incident {
+  doc_Id: any;
   id: string;
   incidentType: IncidentType;
   title: string;
   description?: string;
   location: Location;
-  timestamp: Date;
 }
 
 export enum IncidentType {

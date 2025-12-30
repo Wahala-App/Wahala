@@ -5,7 +5,7 @@ import { IncidentType, Location } from "../api/types";
 import { TextInput } from "./TextInput";
 import { PillButton, DefaultButton } from "./button";
 import getCurrLocation from "../map/mapUtils"
-
+import { storeLocationPin } from "../actions/clientDataHandler";
 interface IncidentDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,6 +40,8 @@ export function IncidentDialog({
             getCurrLocation().then(
                 (currLocation) => setLocation(currLocation)
             );
+
+            
         } else {
             setLocation(providedLocation);
             console.log("Provided Location", providedLocation, location);
@@ -57,7 +59,7 @@ export function IncidentDialog({
   }, [selectedIncidentType]);
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (incidentType === IncidentType.NONE) {
         return;
@@ -66,13 +68,22 @@ export function IncidentDialog({
     if (!title.trim() || (!(location) && !(providedLocation))) {
         onClose();
     }
-
+    
     onSubmit({
       incidentType,
       title: title.trim(),
       description: description.trim() || undefined,
       location: location!,
     });
+
+    try 
+        {
+    
+          await storeLocationPin(incidentType, title.trim(), description.trim(), location!)
+        } catch (err)
+        {
+          console.log("Handling Pin Addition Error: ",err )
+        }
 
     handleClose()
   };

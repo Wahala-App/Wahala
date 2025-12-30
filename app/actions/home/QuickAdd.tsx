@@ -5,7 +5,7 @@ import { IncidentDialog } from "../ui/IncidentDialog";
 import { Incident, IncidentType, Location} from "../api/types";
 import { incidentToIcon } from "../map/mapUtils";
 import { useEffect } from "react";
-import { retrieveLocationPins } from "../actions/clientDataHandler";
+import { retrieveLocationPins } from "../actions/dataHandling";
 export interface QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
   onIncidentChanged?: () => void;

@@ -14,10 +14,13 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.78.0",
     "clsx": "^2.1.1",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
+    "firebase-admin": "^13.6.0",
     "maplibre-gl": "^5.7.1",
     "next": "15.5.9",
     "react": "19.1.0",
+    "react-devtools": "^7.0.1",
     "react-dom": "19.1.0"
   },
   "devDependencies": {

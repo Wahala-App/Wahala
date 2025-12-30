@@ -12,7 +12,7 @@ import { PillButton } from "../ui/button";
 import { auth } from "@/lib/firebase";
 import { logout } from "../actions/auth";
 import { useRouter } from "next/navigation";
-import { retrieveLocationPins, } from "../actions/clientDataHandler";
+import { retrieveLocationPins, } from "../actions/dataHandling";
 import { formatInTimeZone, format } from 'date-fns-tz';
 import { getToken } from "../actions/auth";
 export default function HomeComponent() {
@@ -106,13 +106,9 @@ export default function HomeComponent() {
                  });
   
                  if (response.ok) {
-
-                  if (response.status === 201)
-                  {
                   const newIncident = await response.json(); 
                   console.log("Here is your new incident:", newIncident);
                   mapRef.current.addCustomMarker(newIncident);
-                  }
                 }
                 else
                 {
@@ -153,38 +149,26 @@ export default function HomeComponent() {
   const handleMarkerSecondaryClick = async (incidentId: string) => {
     console.log("Marker right clicked:", incidentId);
     try {
-         const idToken = await getToken();
+        const idToken = await getToken();
 
-        // if (!idToken) {
-        //   alert('You must be logged in');
-        //   return;
-        // }
-        // const response = await fetch('/api/incidents', {
-        //     method: 'DELETE',
-        //     headers: { 
-        //       'Content-Type': 'application/json',
-        //       'Authorization': `Bearer ${idToken}`,  
-        //      },
+        if (!idToken) {
+          alert('You must be logged in');
+          return;
+        }
+        const response = await fetch('/api/incidents', {
+            method: 'DELETE',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,  
+             },
             
-        //     body: JSON.stringify({id : incidentId})
-        // });
-
-        const response = await fetch(`/api/incidents?id=${incidentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          // No Content-Type needed — no body
-        },
-        // No body!
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Delete failed:', response.status, errorText);
-        return;        return;
-      }
-      triggerRefresh()
-      mapRef.current?.refreshMarkers();
+            body: JSON.stringify({id : incidentId})
+        });
+        
+        let data = response.json()
+        console.log(response)
+        triggerRefresh()
+        //mapRef.current?.refreshMarkers();
     } catch (error) {
         console.error('Error creating incident:', error);
     } finally {
