@@ -32,6 +32,15 @@ if (!admin.apps.length) {
   });
 }
 
+const standardUTCDate = () =>
+{
+  //To ensure standard logged date using UTC for pins for the day
+      const today = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'UTC'
+      });
+
+      return today
+}
 const db = admin.firestore(); // ← This is how you get the DB on server
 
 async function getAuthenticatedUser(idToken: string) {
@@ -44,83 +53,90 @@ async function getAuthenticatedUser(idToken: string) {
   }
 }
 
-export async function storeLocationPin(incidentType, title,description, location) {
+export async function storeLocationPin(idToken, incidentType, title, description, location, dateTime) {
   try {
-    const user = await detectLoginState();
+      const uid = await getAuthenticatedUser(idToken);
+
+      //To ensure standard logged date using UTC for pins for the day
+      const today = standardUTCDate()
+
+      const locationCollectionRef = db
+        .collection('location-pin')
+      
+
+      const querySnapshot = await locationCollectionRef
+        .orderBy('addedOn', 'desc')  // Most recent first
+        .limit(1)                    // Only need the latest
+        .get();
+
+      const latestDoc = querySnapshot.empty ? null : querySnapshot.docs[0];
+      
+      //If no location pin document has been created for today create one
+      if (!latestDoc) {
+        const locationPinRef  = db
+        .collection('location-pin')
+        .doc(today)
+
+        await locationPinRef.set({
+            addedOn: FieldValue.serverTimestamp()
+          }, { merge: true });
+      }
+      
+      const pinCollectionRef = db
+        .collection("location-pin")
+        .doc(today)
+        .collection(today)
     
-    if (!user) {
-      throw { type: "login", message: "No user is logged in" };
+      pinCollectionRef.add({ 
+            creatorUid: uid,
+            incidentType: incidentType,
+            title: title,
+            description: description,
+            location: location,
+            dateTime: dateTime,
+            addedOn: FieldValue.serverTimestamp()
+        })
+        
+      console.log("Location pin saved successfully");
+    } catch (error) {
+      console.error("Failed to store supplements", error);
+      throw { type: "data", message: `Failed to store supplement suggested. Try again: ${error}` };
     }
-    //Creates pin collection to store pins under speicifc date
-     //Ensures accurate time and date
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    let unformattedDate  = new Date();
-    const  today= formatInTimeZone(unformattedDate, timeZone, 'yyyy-MM-dd');//'HH:mm:ss zzz');
-   // console.log(today)
-
-    const locationCollectionRef = collection(db, "users", user.uid, "location-pin");
-    const q = query(locationCollectionRef);
-    const querySnapshot = await getDocs(q);
-    const latestDoc = querySnapshot.docs[0] //Latest doc
-    
-    //If no location pin document has been created for today create one
-    if (querySnapshot.empty || latestDoc.id != today)
-    { 
-        const locationPinRef = doc(db, "users", user.uid, "location-pin", today);
-        await setDoc(locationPinRef, {addedOn: serverTimestamp()}, { merge: true });
-    }
-    
-    //Now adds location pins for today at different time stamps
-    let unformattedTime  = new Date();
-    const  formattedTime= formatInTimeZone(unformattedTime, timeZone, 'HH:mm:ss'); //currenttime
-
-     //Current local time
-    const pinCollection = collection(db, "users", user.uid, "location-pin",today,today);
-    const pinRef = doc(db, "users", user.uid, "location-pin", today, today, formattedTime);
-    await setDoc(pinRef,  
-        { incidentType: incidentType,
-          title: title,
-          description: description,
-          location: location,
-          addedOn: serverTimestamp(),
-       },
-        { merge: true });
-
- 
-    console.log("Location pin saved successfully");
-  } catch (error) {
-    console.error("Failed to store supplements", error);
-    throw { type: "data", message: "Failed to store supplement suggested. Try again." };
   }
-}
 
-export async function retrieveLocationPins(date: any) {
-  try {
-    console.log("In retrievelocationpins")
-    const user = await detectLoginState();
+export async function retrieveLocationPins(idToken: any) {
+    try {
+      //To ensure standard logged date using UTC for pins for the day
+      const today = standardUTCDate()
 
-    if (!user) {
-      throw { type: "login", message: "No user is logged in" };
-    }
-   
-    const pinCollection = collection(db, "users", user.uid, "location-pin", date, date);
-    const q = query(pinCollection, orderBy("addedOn", "desc"));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      console.log("No pins")
-      return [];
-    }
+      console.log("In retrievelocationpins")
+      const uid = await getAuthenticatedUser(idToken);
+      
+      const pinCollectionRef = db
+        .collection('location-pin')
+        .doc(today)
+        .collection(today)
 
-    else
-    {
-        const pinData = querySnapshot.docs.map(pinDoc => ({doc_Id: pinDoc.id,
-        ...pinDoc.data(),
-        }));
-        console.log(pinData)
-        console.log("Location pins obtained successfully");
-        return pinData 
-    }
+      const querySnapshot = await pinCollectionRef
+        .orderBy('addedOn', 'desc')  // Most recent first
+        .get();
+
+      const latestDoc = querySnapshot.empty ? null : querySnapshot.docs[0];
+
+      if (!latestDoc) {
+        console.log("No pins")
+        return [];
+      }
+
+      else
+      {
+          const pinData = querySnapshot.docs.map(pinDoc => ({doc_Id: pinDoc.id,
+          ...pinDoc.data(),
+          }));
+       //   console.log(pinData)
+          console.log("Location pins obtained successfully");
+          return pinData 
+      }
 
  
   } catch (error) {
@@ -130,14 +146,13 @@ export async function retrieveLocationPins(date: any) {
 }
 
 export async function deleteLocationPin(idToken: string, incident) {
-  const uid = await getAuthenticatedUser(idToken);
-
   try {
-     let date = convertTimestampToDate(incident.addedOn)
+     const uid = await getAuthenticatedUser(idToken);
+   
+     let date = parseLocalTimestampToUTC(incident.dateTime, "date")
+     console.log(date)
 
     const pinDocRef = db
-      .collection('users')
-      .doc(uid)
       .collection('location-pin')
       .doc(date)
       .collection(date)
@@ -166,3 +181,28 @@ function convertTimestampToDate(timestamp: any) {
   const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1e6);
   return date.toLocaleDateString('en-CA');
 }
+
+function parseLocalTimestampToUTC(stored, output) {
+  // 1. Regex to find exactly "+HH:mm" or "-HH:mm" inside the GMT parentheses
+  const offsetMatch = stored.match(/GMT([+-]\d{2}:\d{2})/);
+  if (!offsetMatch) throw new Error("Offset not found");
+  const offset = offsetMatch[1]; 
+
+  // 2. Format as a strict ISO string: "YYYY-MM-DDTHH:mm:ss-05:00"
+  // This tells JS: "This time IS in -05:00. Convert it to UTC for me."
+  const dateTimeStr = stored.split(' (')[0].replace(' ', 'T');
+  const utcDate = new Date(`${dateTimeStr}${offset}`);
+
+  if (isNaN(utcDate.getTime())) throw new Error("Invalid date result");
+
+  // 3. Output logic
+  if (output === 'date') {
+    // toISOString always returns the UTC calendar date
+    return utcDate.toISOString().split('T')[0]; 
+  }
+
+  return utcDate;
+}
+
+// Test: 2025-12-30 15:34:33 (GMT-05:00) 
+// Result: 2025-12-30 (since UTC is 20:34 on the same day)

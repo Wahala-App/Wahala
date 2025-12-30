@@ -12,7 +12,7 @@ import { PillButton } from "../ui/button";
 import { auth } from "@/lib/firebase";
 import { logout } from "../actions/auth";
 import { useRouter } from "next/navigation";
-import { retrieveLocationPins, } from "../actions/clientDataHandler";
+import { retrieveLocationPins, } from "../actions/serverDataHandler";
 import { formatInTimeZone, format } from 'date-fns-tz';
 import { getToken } from "../actions/auth";
 export default function HomeComponent() {
@@ -32,58 +32,6 @@ export default function HomeComponent() {
 
   const triggerRefresh = () => setRefreshCount((prev) => prev + 1);
 
-  //  useEffect(() => {
-  //     // Define the async function inside
-  //     const fetchLocationPins = async () => {
-  //       let today = new Date().toISOString().split('T')[0];
-
-  //       try {
-  //         console.log(today)
-  //         let pins = await retrieveLocationPins(today);
-  //         console.log("Pint output")
-  //         console.log(pins)
-
-  //         for (const pin of pins)
-  //         {
-  //           console.log("Applying each pin: ", pin)
-  //            if (mapRef.current) {
-  
-  //               const response = await fetch('/api/incidents', {
-  //               method: 'POST',
-  //               headers: { 'Content-Type': 'application/json' },
-  //                body: JSON.stringify(pin)
-  //                });
-  
-  //                if (response.ok) {
-  //                 const newIncident = await response.json(); 
-  //                 console.log("Here is your new incident:", newIncident);
-  //                  mapRef.current.addCustomMarker(newIncident);
-  //                  console.log("Pins populated successfully")
-  //               }
-  //               else
-  //               {
-  //                 console.log("Response is not ok!")
-  //               }
-             
-               
-  //             }
-  
-  //             else
-  //             {
-  //               console.log("Map methods not available")
-                
-  //             }
-  //         }
-          
-  //       } catch (err) {
-  //         console.log("fetch pin error:", err);
-  //       }
-  //     };
-  //     // Call it immediately
-  //     fetchLocationPins();
-  
-  //   }, []); // This will now work perfectly alongside your map effect
-
    const fetchLocationPins = useCallback ( async () => {
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         console.log(timeZone); // e.g., "America/New_York"
@@ -92,10 +40,23 @@ export default function HomeComponent() {
         const  today= formatInTimeZone(now, timeZone, 'yyyy-MM-dd');
   
         try {
-          await fetch('/api/incidents', { method: 'PUT' }); //Resets list of locally stored pin ids and cache
 
-          let pins = await retrieveLocationPins(today);
-        
+          //Resets list of locally stored pin ids and cache
+          await fetch('/api/incidents', { method: 'PUT' }); //Important
+
+          const idToken = await getToken();
+          
+          const response = await fetch('/api/dataHandler', {
+                method: 'GET',
+                 headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                },
+             });
+          
+          let pins;
+          if (response.ok) {
+            pins = await response.json(); 
+  
           for (const pin of pins)
           {
                if (mapRef.current) {
@@ -124,6 +85,7 @@ export default function HomeComponent() {
               {
                  console.log("Map methods not available") 
               }
+            }
         }
   
         } catch (err) {
@@ -155,27 +117,11 @@ export default function HomeComponent() {
     try {
          const idToken = await getToken();
 
-        // if (!idToken) {
-        //   alert('You must be logged in');
-        //   return;
-        // }
-        // const response = await fetch('/api/incidents', {
-        //     method: 'DELETE',
-        //     headers: { 
-        //       'Content-Type': 'application/json',
-        //       'Authorization': `Bearer ${idToken}`,  
-        //      },
-            
-        //     body: JSON.stringify({id : incidentId})
-        // });
-
         const response = await fetch(`/api/incidents?id=${incidentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${idToken}`,
-          // No Content-Type needed — no body
         },
-        // No body!
       });
 
       if (!response.ok) {
