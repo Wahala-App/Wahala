@@ -60,7 +60,7 @@ export async function storeLocationPin(idToken, incidentType, title, description
       //To ensure standard logged date using UTC for pins for the day
       const today = parseLocalTimestampToUTC(dateTime, 'date')
       const pinCollectionRef = db
-        .collection("location-pin")
+        .collection("location-pins")
 
       pinCollectionRef.add({ 
             creatorUid: uid,
@@ -89,7 +89,7 @@ export async function retrieveLocationPins(idToken: any) {
       const uid = await getAuthenticatedUser(idToken);
       
       const pinCollectionRef = db
-        .collection('location-pin')
+        .collection('location-pins')
     
       const querySnapshot = await pinCollectionRef
          .where("dateKey", "==", today) // 1. Filter by the specific date
@@ -124,17 +124,19 @@ export async function deleteLocationPin(idToken: string, incident) {
   try {
      const uid = await getAuthenticatedUser(idToken);
    
-     let date = parseLocalTimestampToUTC(incident.dateTime, "date")
-     console.log(date)
-
     const pinDocRef = db
-      .collection('location-pin')
+      .collection('location-pins')
       .doc(incident.doc_Id);
 
-    const docSnapshot = await pinDocRef.get();
+     const docSnapshot = await pinDocRef.get();
 
     if (!docSnapshot.exists) {
       console.log(`No pin found for ${incident.doc_Id}`);
+      return false;
+    }
+
+    //Does not have permission to delete 
+    if (docSnapshot.data().creatorUid !== uid) {
       return false;
     }
 
