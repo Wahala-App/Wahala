@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { Incident, IncidentType } from '../types';
-import { deleteLocationPin } from '@/app/actions/serverDataHandler';
+import { deleteLocationPin } from '@/app/actions/dataHandler';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
 const FALLBACK_LOCATION = { latitude: 32.4173824, longitude: -81.7856512 };

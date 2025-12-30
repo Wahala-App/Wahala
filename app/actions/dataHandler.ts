@@ -58,35 +58,10 @@ export async function storeLocationPin(idToken, incidentType, title, description
       const uid = await getAuthenticatedUser(idToken);
 
       //To ensure standard logged date using UTC for pins for the day
-      const today = standardUTCDate()
-
-      const locationCollectionRef = db
-        .collection('location-pin')
-      
-
-      const querySnapshot = await locationCollectionRef
-        .orderBy('addedOn', 'desc')  // Most recent first
-        .limit(1)                    // Only need the latest
-        .get();
-
-      const latestDoc = querySnapshot.empty ? null : querySnapshot.docs[0];
-      
-      //If no location pin document has been created for today create one
-      if (!latestDoc) {
-        const locationPinRef  = db
-        .collection('location-pin')
-        .doc(today)
-
-        await locationPinRef.set({
-            addedOn: FieldValue.serverTimestamp()
-          }, { merge: true });
-      }
-      
+      const today = parseLocalTimestampToUTC(dateTime, 'date')
       const pinCollectionRef = db
         .collection("location-pin")
-        .doc(today)
-        .collection(today)
-    
+
       pinCollectionRef.add({ 
             creatorUid: uid,
             incidentType: incidentType,
@@ -94,13 +69,14 @@ export async function storeLocationPin(idToken, incidentType, title, description
             description: description,
             location: location,
             dateTime: dateTime,
+            dateKey: today, //For quick filtering
             addedOn: FieldValue.serverTimestamp()
         })
         
       console.log("Location pin saved successfully");
     } catch (error) {
-      console.error("Failed to store supplements", error);
-      throw { type: "data", message: `Failed to store supplement suggested. Try again: ${error}` };
+      console.error("Failed to store location pub", error);
+      throw { type: "data", message: `Failed to store location pin. Try again: ${error}` };
     }
   }
 
@@ -114,12 +90,11 @@ export async function retrieveLocationPins(idToken: any) {
       
       const pinCollectionRef = db
         .collection('location-pin')
-        .doc(today)
-        .collection(today)
-
+    
       const querySnapshot = await pinCollectionRef
-        .orderBy('addedOn', 'desc')  // Most recent first
-        .get();
+         .where("dateKey", "==", today) // 1. Filter by the specific date
+         .orderBy('addedOn', 'desc')   // 2. order by most recent first
+         .get();
 
       const latestDoc = querySnapshot.empty ? null : querySnapshot.docs[0];
 
@@ -140,8 +115,8 @@ export async function retrieveLocationPins(idToken: any) {
 
  
   } catch (error) {
-    console.error("Failed to store supplements", error);
-    throw { type: "data", message: "Failed to store supplement suggested. Try again." };
+    console.error("Failed to obtain location pin", error);
+    throw { type: "data", message: "Failed to obtain location pins. Try again." };
   }
 }
 
@@ -154,8 +129,6 @@ export async function deleteLocationPin(idToken: string, incident) {
 
     const pinDocRef = db
       .collection('location-pin')
-      .doc(date)
-      .collection(date)
       .doc(incident.doc_Id);
 
     const docSnapshot = await pinDocRef.get();

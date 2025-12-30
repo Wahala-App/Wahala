@@ -12,7 +12,7 @@ import { PillButton } from "../ui/button";
 import { auth } from "@/lib/firebase";
 import { logout } from "../actions/auth";
 import { useRouter } from "next/navigation";
-import { retrieveLocationPins, } from "../actions/serverDataHandler";
+import { retrieveLocationPins, } from "../actions/dataHandler";
 import { formatInTimeZone, format } from 'date-fns-tz';
 import { getToken } from "../actions/auth";
 export default function HomeComponent() {

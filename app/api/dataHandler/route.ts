@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { Incident, IncidentType } from '../types';
-import { deleteLocationPin, storeLocationPin, retrieveLocationPins } from '@/app/actions/serverDataHandler';
+import { deleteLocationPin, storeLocationPin, retrieveLocationPins } from '@/app/actions/dataHandler';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
 
