@@ -27,7 +27,10 @@ interface MapProps {
     onPositionClick?: (lat: number, lon: number) => void;
 }
 
+// key = your custom ID, value = Marker instance
 const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMarkerSecondaryClick, onPositionClick }, ref) => {
+  const markersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
+
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
     latitude: number;
@@ -46,7 +49,11 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
     incident: Incident
   ) => {
 
-    if (!mapRef.current) return;
+    if (!mapRef.current || !incident.id) return;
+
+      // ❗ Prevent duplicate markers
+  if (markersRef.current.has(incident.id)) return;
+
 
     const lat = incident.location.latitude;
     const lng = incident.location.longitude;
@@ -64,13 +71,29 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
         }
     }
 
-    new Marker({
+   const marker = new Marker({
       element: el,
       draggable: false,
     })
       .setLngLat([lng, lat])
       .addTo(mapRef.current);
+
+      // Store it with your custom ID
+    markersRef.current.set(incident.id, marker) //Tracks each marker with assigned incident id
   };
+  
+  const removeMarker = async (incidentId: any) => {
+      const marker = markersRef.current.get(incidentId);
+      console.log(marker)
+      if (marker) {
+        marker.remove();        // removes it from the map
+        markersRef.current.delete(incidentId); // clean up our map
+        console.log(`Removed marker ${incidentId}`);
+      } else {
+        console.warn(`Marker with id ${incidentId} not found`);
+      }
+
+    }
 
   const refreshMarkers = async () => {
       document.querySelectorAll('.maplibregl-marker').forEach(marker => marker.remove());
@@ -87,6 +110,8 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
     recalibrateLocation,
     addCustomMarker,
     refreshMarkers,
+    removeMarker,
+    syncMarkers
   }));
 
   const initializeMap = async () => {
@@ -143,74 +168,51 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
       } else {
         setIsInitializing(false);
       }
+
+      return mapRef.current;
     } catch (error) {
       console.error("Error initializing map:", error);
       setIsInitializing(false);
     }
   };
 
-  useEffect(() => {
-    initializeMap();
+  const syncMarkers = (incidentToDelete: Incident) => {
+    console.log("Syncing markers for deletion:", incidentToDelete);
+  if (!incidentToDelete?.id) return;
 
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
+  const marker = markersRef.current.get(incidentToDelete.id);
+  if (!marker) return;
 
+  // Remove the marker from the map
+  marker.remove();
 
-  
-  //  const [refreshKey, setRefreshKey] = useState(0);
-  //  const fetchLocationPins = useCallback ( async () => {
-  //       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  //       console.log(timeZone); // e.g., "America/New_York"
-
-  //       const now = new Date();
-  //       const  today= formatInTimeZone(now, timeZone, 'yyyy-MM-dd');
-  
-  //       try {
-  //         await fetch('/api/incidents', { method: 'PUT' }); //Resets list of locally stored pin ids and cache
-
-  //         let pins = await retrieveLocationPins(today);
-        
-  //         for (const pin of pins)
-  //         {
-
-  //               const response = await fetch('/api/incidents', {
-  //               method: 'POST',
-  //               headers: { 'Content-Type': 'application/json' },
-  //                body: JSON.stringify(pin)
-  //                });
-  
-  //                if (response.ok) {
-  //                 const newIncident = await response.json(); 
-  //                 console.log("Here is your new incident:", newIncident);
-  //                 addCustomMarker(newIncident);
-  //               }
-  //               else
-  //               {
-  //                 console.log("Response is not ok!: ")
-  //               } 
-  //             }
-  
-  //       } catch (err) {
-  //         console.log(err);
-  //       }
-  //     }, []); // This will now work perfectly alongside your map effect
-  
-  //   // Run on mount AND whenever refreshKey changes
+  // Clean up the marker registry
+  markersRef.current.delete(incidentToDelete.id);
+};
   // useEffect(() => {
-  //   fetchLocationPins();
-  // }, [refreshKey, fetchLocationPins]);
+  //   initializeMap();
 
-  // // Public function to trigger refresh manually
-  // const refreshPins = () => {
-  //   setRefreshKey(prev => prev + 1);
-  // };
-  
-  
+  //   return () => {
+  //     if (mapRef.current) {
+  //       mapRef.current.remove();
+  //       mapRef.current = null;
+  //     }
+  //   };
+  // }, []);
+useEffect(() => {
+  initializeMap();
+
+  return () => {
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current.clear();
+
+    mapRef.current?.remove();
+    mapRef.current = null;
+  };
+}, []);
+
+
+
   return (
     <div className="h-full flex flex-col">
       <div id="map" className="w-full h-full overflow-hidden relative">

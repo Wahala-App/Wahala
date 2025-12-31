@@ -105,7 +105,7 @@ export async function retrieveLocationPins(idToken: any) {
 
       else
       {
-          const pinData = querySnapshot.docs.map(pinDoc => ({doc_Id: pinDoc.id,
+          const pinData = querySnapshot.docs.map(pinDoc => ({id: pinDoc.id,
           ...pinDoc.data(),
           }));
        //   console.log(pinData)
@@ -126,12 +126,12 @@ export async function deleteLocationPin(idToken: string, incident) {
    
     const pinDocRef = db
       .collection('location-pins')
-      .doc(incident.doc_Id);
+      .doc(incident.id);
 
      const docSnapshot = await pinDocRef.get();
 
     if (!docSnapshot.exists) {
-      console.log(`No pin found for ${incident.doc_Id}`);
+      console.log(`No pin found for ${incident.id}`);
       return false;
     }
 
@@ -141,7 +141,7 @@ export async function deleteLocationPin(idToken: string, incident) {
     }
 
     await pinDocRef.delete();
-    console.log(`Deleted pin ${incident.doc_Id}`);
+    console.log(`Deleted pin ${incident.id}`);
     return true;
   } catch (error) {
     console.error('Failed to delete pin: ', error);

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       try {
         const body = await request.json();
       
-        const exists = incidentsCache.find(i => i.doc_Id === body.doc_Id);
+        const exists = incidentsCache.find(i => i.id === body.doc_Id);
         
         if (exists) {
           return NextResponse.json(exists, { status: 200 }); // Already have it, don't duplicate
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
         // {
               const newIncident: Incident = {
                 ...body,
-                id: (pinId++).toString(),
-                location: body.location
+             //   id: (pinId++).toString(),
+             //   location: body.location
               };
               
               incidentsCache = [...incidentsCache, newIncident];

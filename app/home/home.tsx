@@ -21,6 +21,7 @@ export default function HomeComponent() {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
     refreshMarkers: () => void;
+    syncMarkers: (incidentId: any) => void;
   }>(null);
 
   const addRef = useRef<{
@@ -70,9 +71,9 @@ export default function HomeComponent() {
 
                   if (response.status === 201)
                   {
-                  const newIncident = await response.json(); 
-                  console.log("Here is your new incident:", newIncident);
-                  mapRef.current.addCustomMarker(newIncident);
+                  const incident = await response.json(); 
+                  console.log("Here is your new incident:", incident);
+                  mapRef.current.addCustomMarker(incident);
                   }
                 }
                 else
@@ -123,14 +124,21 @@ export default function HomeComponent() {
           'Authorization': `Bearer ${idToken}`,
         },
       });
+      
+      //No need to refresh simply delete the marker with specific id
+      if (response.ok) {
 
-      if (!response.ok) {
+      const incidentToDelete = await response.json(); 
+     // triggerRefresh()
+      mapRef.current?.syncMarkers(incidentToDelete);
+      
+      }
+      else  { //Response not ok
         const errorText = await response.text();
         console.error('Delete failed:', response.status, errorText);
         return;        return;
       }
-      triggerRefresh()
-      mapRef.current?.refreshMarkers();
+      
     } catch (error) {
         console.error('Error creating incident:', error);
     } finally {
