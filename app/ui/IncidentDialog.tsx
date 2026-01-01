@@ -5,7 +5,6 @@ import { IncidentType, Location } from "../api/types";
 import { TextInput } from "./TextInput";
 import { PillButton, DefaultButton } from "./button";
 import getCurrLocation from "../map/mapUtils"
-import { storeLocationPin } from "../../trash/clientDataHandler";
 import { getToken } from "../actions/auth";
 import { formatInTimeZone, format } from 'date-fns-tz';
 

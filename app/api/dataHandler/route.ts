@@ -83,11 +83,11 @@ export async function DELETE(request: NextRequest) {
         }
         
        
-        await deleteLocationPin(idToken, incidentToDelete);
+        await deleteLocationPin(idToken, incidentId);
         
         console.log("Successfully deleted incident")
 
-        return NextResponse.json(incidentToDelete, { status: 200 });
+        return NextResponse.json(incidentId, { status: 200 });
     } catch (error) {
         console.error('Error deleting incident:', error);
         return NextResponse.json(

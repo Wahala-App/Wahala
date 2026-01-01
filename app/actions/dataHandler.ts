@@ -22,9 +22,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 // Helper: Verify the user's Firebase ID token and get their UID
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
-const serviceAccount = JSON.parse(
-  process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_KEY as string
-);
+const serviceAccount : admin.ServiceAccount = { 
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    privateKey: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    clientEmail: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_CLIENT_EMAIL,
+}
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -53,7 +55,7 @@ async function getAuthenticatedUser(idToken: string) {
   }
 }
 
-export async function storeLocationPin(idToken, incidentType, title, description, location, dateTime) {
+export async function storeLocationPin(idToken: string, incidentType: string, title: string, description: string, location: string, dateTime: string) {
   try {
       const uid = await getAuthenticatedUser(idToken);
 
@@ -120,32 +122,32 @@ export async function retrieveLocationPins(idToken: any) {
   }
 }
 
-export async function deleteLocationPin(idToken: string, incident) {
+export async function deleteLocationPin(idToken: string, incidentId: any) {
   try {
      const uid = await getAuthenticatedUser(idToken);
    
     const pinDocRef = db
       .collection('location-pins')
-      .doc(incident.id);
+      .doc(incidentId);
 
      const docSnapshot = await pinDocRef.get();
 
     if (!docSnapshot.exists) {
-      console.log(`No pin found for ${incident.id}`);
+      console.log(`No pin found for ${incidentId}`);
       return false;
     }
 
     //Does not have permission to delete 
-    if (docSnapshot.data().creatorUid !== uid) {
+    if (docSnapshot.data()!!.creatorUid !== uid) {
       return false;
     }
 
     await pinDocRef.delete();
-    console.log(`Deleted pin ${incident.id}`);
+    console.log(`Deleted pin ${incidentId}`);
     return true;
   } catch (error) {
     console.error('Failed to delete pin: ', error);
-   throw { type: 'data', message: `Failed to delete pin ${incident}` };
+   throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
   }
 }
 
@@ -157,7 +159,7 @@ function convertTimestampToDate(timestamp: any) {
   return date.toLocaleDateString('en-CA');
 }
 
-function parseLocalTimestampToUTC(stored, output) {
+function parseLocalTimestampToUTC(stored: string, output: string) {
   // 1. Regex to find exactly "+HH:mm" or "-HH:mm" inside the GMT parentheses
   const offsetMatch = stored.match(/GMT([+-]\d{2}:\d{2})/);
   if (!offsetMatch) throw new Error("Offset not found");
