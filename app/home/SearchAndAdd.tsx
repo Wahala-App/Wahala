@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Incident } from "../api/types";
 import { IncidentSearch, IncidentSearchProps } from "./IncidentSearch";
 import { QuickAdd, QuickAddProps } from "./QuickAdd";
+import { getToken } from "@/app/actions/auth";
 
 interface SearchAndAddProps extends IncidentSearchProps, QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
@@ -20,7 +21,15 @@ export default function SearchAndAdd(
     // Consider checking if mapRef.current is ready instead of time.
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch('/api/incidents');
+        const token = await getToken();
+        if (!token) {
+            return; // No user logged in, so no incidents to fetch
+        }
+        const response = await fetch('/api/dataHandler', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const incidents: Incident[] = await response.json();
         incidents.forEach(addCustomMarker);
       } catch (e) {

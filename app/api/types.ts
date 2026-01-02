@@ -1,5 +1,4 @@
 export interface Incident {
-  doc_Id: any;
   id: string;
   incidentType: IncidentType;
   title: string;

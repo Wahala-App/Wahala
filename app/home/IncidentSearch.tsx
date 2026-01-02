@@ -3,6 +3,7 @@ import { DefaultButton } from "../ui/button";
 import IncidentDisplay from "../ui/IncidentDisplay";
 import { Incident, IncidentType } from "../api/types";
 import { TextInput } from "../ui/TextInput";
+import { getToken } from "@/app/actions/auth";
 
 export interface IncidentSearchProps {
   selectedIncidentId?: string | null;
@@ -17,7 +18,17 @@ export function IncidentSearch({ selectedIncidentId, incidentTrigger }: Incident
   useEffect(() => {
     const fetchIncidents = async () => {
       try {
-        const response = await fetch('/api/incidents');
+        const token = await getToken();
+        if (!token) {
+          setNearbyIncidents([]); // No user, no incidents
+          return;
+        }
+        
+        const response = await fetch('/api/dataHandler', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         const data = await response.json();
         setNearbyIncidents(data);
       } catch (e) {
@@ -25,7 +36,6 @@ export function IncidentSearch({ selectedIncidentId, incidentTrigger }: Incident
       }
     };
     fetchIncidents(); 
-    // TODO : IMPLEMENT API FOR GETTING NEARBY INCIDENTS
   }, [incidentTrigger]);
 
   return (

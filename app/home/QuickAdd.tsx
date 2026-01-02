@@ -5,6 +5,7 @@ import { IncidentDialog } from "../ui/IncidentDialog";
 import { Incident, IncidentType, Location} from "../api/types";
 import { incidentToIcon } from "../map/mapUtils";
 import { useEffect } from "react";
+import { getToken } from "@/app/actions/auth";
 
 export interface QuickAddProps {
   addCustomMarker: (incident: Incident) => void;
@@ -29,18 +30,27 @@ export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarke
   }));
 
   const handleDialogSubmit = async (incidentData: any) => {
-    //TODO: IMPLEMENT API FOR SAVING INCIDENT TO DATABASE
     try {
-      const response = await fetch('/api/incidents', {
+      const token = await getToken();
+      if (!token) {
+        console.error('No authentication token found.');
+        return;
+      }
+
+      const response = await fetch('/api/dataHandler', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(incidentData)
       });
       
       if (!response.ok) throw new Error('Failed to create incident');
       
-      const newIncident = await response.json();
-      addCustomMarker(newIncident); // Update Map
+      // The dataHandler API doesn't return the full incident,
+      // so we use the local incidentData to update the UI.
+      addCustomMarker(incidentData); // Update Map
       if (onIncidentChanged) {
         onIncidentChanged();
       }
@@ -65,7 +75,7 @@ export const QuickAdd = forwardRef<QuickAddRef, QuickAddProps>(({ addCustomMarke
         onClick={() => setIsDialogOpen(true)}
         className="rounded-full"
       >
-        <div className="font-bold text-l"> + Add </div>
+        <div className="font-bold text-l"> + Report Incident at Current Location </div>
       </PillButton>
 
       <IncidentDialog

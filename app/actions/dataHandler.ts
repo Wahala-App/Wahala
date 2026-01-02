@@ -1,22 +1,6 @@
 'use server';
 
-//import { auth, db } from "../../lib/firebase"
-import { doc, setDoc, addDoc, where, getDocs,deleteDoc, query, collection, orderBy, limit, serverTimestamp} from "firebase/firestore";
-import {
-  reload,
-  updatePassword,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  signOut,
-  User,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserSessionPersistence,
-} from "firebase/auth";
-import { formatInTimeZone, format } from 'date-fns-tz';
-
+import { Incident, IncidentType } from "../api/types";
 import { auth } from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 // Helper: Verify the user's Firebase ID token and get their UID
@@ -64,7 +48,7 @@ export async function storeLocationPin(idToken: string, incidentType: string, ti
       const pinCollectionRef = db
         .collection("location-pins")
 
-      pinCollectionRef.add({ 
+      const incidentRef = await pinCollectionRef.add({ 
             creatorUid: uid,
             incidentType: incidentType,
             title: title,
@@ -82,7 +66,7 @@ export async function storeLocationPin(idToken: string, incidentType: string, ti
     }
   }
 
-export async function retrieveLocationPins(idToken: any) {
+export async function retrieveLocationPins(idToken: any): Promise<Incident[]> {
     try {
       //To ensure standard logged date using UTC for pins for the day
       const today = standardUTCDate()
@@ -94,7 +78,7 @@ export async function retrieveLocationPins(idToken: any) {
         .collection('location-pins')
     
       const querySnapshot = await pinCollectionRef
-         .where("dateKey", "==", today) // 1. Filter by the specific date
+         //.where("dateKey", "==", today) // 1. Filter by the specific date
          .orderBy('addedOn', 'desc')   // 2. order by most recent first
          .get();
 
@@ -109,7 +93,7 @@ export async function retrieveLocationPins(idToken: any) {
       {
           const pinData = querySnapshot.docs.map(pinDoc => ({id: pinDoc.id,
           ...pinDoc.data(),
-          }));
+          } as Incident));
        //   console.log(pinData)
           console.log("Location pins obtained successfully");
           return pinData 

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
 import path from 'path';
-import { Incident, IncidentType } from '../types';
 import { deleteLocationPin, storeLocationPin, retrieveLocationPins } from '@/app/actions/dataHandler';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
@@ -31,36 +29,33 @@ export async function GET(request: NextRequest)  {
         { status: 400 });
  }
 }
-let pinId= 0;
 
 export async function POST(request: NextRequest) { //Submit.Create
 
   try {
         const body = await request.json();
-          const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'No idToken provided' }), { status: 401 });
-    }
+        const authHeader = request.headers.get('authorization');
 
-    const idToken = authHeader.split('Bearer ')[1];
+        if (!authHeader?.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'No idToken provided' }), { status: 401 });
+        }
 
-    await storeLocationPin(idToken, body.incidentType, body.title, body.description, body.location, body.dateTime)
+        const idToken = authHeader.split('Bearer ')[1];
 
-    console.log("Successfully stored incident")
+        storeLocationPin(idToken, body.incidentType, body.title, body.description, body.location, body.dateTime)
 
-    return NextResponse.json("Success", { status: 200 });
-       
-      
+        console.log("Successfully stored incident")
+
+        return NextResponse.json("Success", { status: 200 });    
     } catch (error) {
-      console.error('Error storing incident:', error);
-      return NextResponse.json(
-        { error: error },
-        { status: 400 });
-  }
- }
+        console.error('Error storing incident:', error);
+        return NextResponse.json(
+            { error: error },
+            { status: 400 });
+    }
+}
       
  export async function PUT() { //Update but not delete
-  pinId = 0;
 
   return NextResponse.json({ message: "Reset successful" });
 }
