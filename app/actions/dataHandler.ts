@@ -6,10 +6,9 @@ import { FieldValue } from 'firebase-admin/firestore';
 // Helper: Verify the user's Firebase ID token and get their UID
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
+
 const serviceAccount : admin.ServiceAccount = { 
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    privateKey: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    clientEmail: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_CLIENT_EMAIL,
+ ...JSON.parse(process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_KEY as string)
 }
 
 if (!admin.apps.length) {
