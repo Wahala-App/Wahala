@@ -5,6 +5,8 @@ import { IncidentType, Location } from "../api/types";
 import { TextInput } from "./TextInput";
 import { PillButton, DefaultButton } from "./button";
 import getCurrLocation from "../map/mapUtils"
+import { getToken } from "../actions/auth";
+import { formatInTimeZone, format } from 'date-fns-tz';
 
 interface IncidentDialogProps {
   isOpen: boolean;
@@ -40,6 +42,8 @@ export function IncidentDialog({
             getCurrLocation().then(
                 (currLocation) => setLocation(currLocation)
             );
+
+            
         } else {
             setLocation(providedLocation);
             console.log("Provided Location", providedLocation, location);
@@ -56,8 +60,69 @@ export function IncidentDialog({
     }
   }, [selectedIncidentType]);
 
+  const getLocalTimestamp = () => {
+    const now = new Date();
 
-  const handleSubmit = (e: React.FormEvent) => {
+    // Date: YYYY-MM-DD
+    const date = now.toLocaleDateString('en-CA');
+
+    // Time: 24-hour format HH:mm:ss
+    const time = now.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    // Short timezone name (e.g., "WAT", "EST", "CET", "IST")
+    const shortName = new Intl.DateTimeFormat('en-US', {
+      timeZoneName: 'short',
+    })
+      .formatToParts(now)
+      .find(part => part.type === 'timeZoneName')?.value;
+
+    // Offset: GMT+01:00 or GMT-05:00
+    const offsetTotal = now.getTimezoneOffset();
+    const offset = -offsetTotal; // Flip for correct sign
+    const sign = offset >= 0 ? '+' : '-';
+    const abs = Math.abs(offset);
+    const hours = Math.floor(abs / 60).toString().padStart(2, '0');
+    const mins = (abs % 60).toString().padStart(2, '0');
+    const offsetStr = `GMT${sign}${hours}:${mins}`;
+
+    // Final: "2025-12-30 14:30:45 (GMT+01:00, WAT)"
+    return `${date} ${time} (${offsetStr}, ${shortName})`;
+}
+
+const parseLocalTimestampToUTC = (stored: string) => {
+    // Input example: "2025-12-30 14:30:45 (GMT+01:00, WAT)"
+
+    // Extract offset: GMT+01:00 or GMT-05:30
+    const offsetMatch = stored.match(/GMT([+-]\d{2}:\d{2})/);
+    if (!offsetMatch) throw new Error("Cannot find offset in string");
+
+    const offsetStr = offsetMatch[1]; // "+01:00" or "-05:30"
+    const sign = offsetStr[0] === '+' ? 1 : -1;
+    const [h, m] = offsetStr.slice(1).split(':').map(Number);
+    const offsetMinutes = sign * (h * 60 + m);
+
+    // Extract date + time part
+    const dateTimeStr = stored.split(' (')[0].trim(); // "2025-12-30 14:30:45"
+
+    // Create Date object from local time string
+    const localDate = new Date(dateTimeStr);
+
+    if (isNaN(localDate.getTime())) {
+      throw new Error("Invalid date format");
+    }
+
+    // Convert to UTC by subtracting the local offset
+    const utcDate = new Date(localDate.getTime() - offsetMinutes * 60000);
+
+    return utcDate;
+}
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (incidentType === IncidentType.NONE) {
         return;
@@ -66,13 +131,51 @@ export function IncidentDialog({
     if (!title.trim() || (!(location) && !(providedLocation))) {
         onClose();
     }
-
+    
     onSubmit({
       incidentType,
       title: title.trim(),
       description: description.trim() || undefined,
       location: location!,
     });
+
+    try 
+        {
+          const idToken = await getToken()
+          //Now adds location pins for today with specific timestampes including the timeozone for the user
+          //So that when populating it can be accurate for all users by converting to UTC later ons
+          let dateTime  = getLocalTimestamp();
+
+          const bodyData = 
+          { 
+            incidentType: incidentType,
+            title: title.trim(),
+            description: description.trim(),
+            location: location!,
+            dateTime: dateTime
+          }
+
+          const response = await fetch(`/api/dataHandler`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',  // ← Critical for JSON body
+          },
+          body: JSON.stringify(bodyData),
+        });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Request failed:', response.status, errorText);
+        return;
+      }
+
+      console.log("Successfully stored pin data")
+      
+        } catch (err)
+        {
+          console.log("Handling Pin Addition Error: ",err )
+        }
 
     handleClose()
   };
