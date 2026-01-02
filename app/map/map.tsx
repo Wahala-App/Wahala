@@ -110,17 +110,17 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
         incidents.forEach(incident => addCustomMarker(incident));
     }
 
-    const syncMarkers = (incidentToDelete: Incident) => {
-        console.log("Syncing markers for deletion:", incidentToDelete);
-        
-        if (!incidentToDelete?.id) return;
+    const syncMarkers = (incidentToDeleteId: string) => {
+        console.log("Syncing markers for deletion:", incidentToDeleteId);
+        const marker = markersRef.current.get(incidentToDeleteId);
 
-        const marker = markersRef.current.get(incidentToDelete.id);
+        console.log("Found marker to delete:", marker);
         if (!marker) return;
 
         marker.remove();
 
-        markersRef.current.delete(incidentToDelete.id);
+        markersRef.current.delete(incidentToDeleteId);
+        console.log("Marker removed and internal state updated.");
     };
 
     
