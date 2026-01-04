@@ -77,7 +77,6 @@ export async function DELETE(request: NextRequest) {
           return new Response(JSON.stringify({ error: 'Missing incident id' }), { status: 400 });
         }
         
-       
         await deleteLocationPin(idToken, incidentId);
         
         console.log("Successfully deleted incident")

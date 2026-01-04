@@ -93,9 +93,9 @@ export default function HomeComponent() {
         //No need to refresh simply delete the marker with specific id
         if (response.ok) {
 
-            const incidentToDelete = await response.json(); 
-            //triggerRefresh()
-            mapRef.current?.syncMarkers(incidentToDelete);
+            const incidentToDeleteId= await response.json(); 
+            mapRef.current?.syncMarkers(incidentToDeleteId);
+
         } else { //Response not ok
             const errorText = await response.text();
             console.error('Delete failed:', response.status, errorText);
