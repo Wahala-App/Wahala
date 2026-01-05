@@ -120,9 +120,10 @@ export async function deleteLocationPin(idToken: string, incidentId: any) {
       console.log(`No pin found for ${incidentId}`);
       return false;
     }
-
+    
     //Does not have permission to delete 
-    if (docSnapshot.data()!!.creatorUid !== uid) {
+    if (docSnapshot.data()?.creatorUid !== uid) {
+      throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
       return false;
     }
 

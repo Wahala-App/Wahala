@@ -94,6 +94,7 @@ export default function HomeComponent() {
         if (response.ok) {
 
             const incidentToDeleteId= await response.json(); 
+            console.log("Yur=>", incidentToDeleteId)
             mapRef.current?.syncMarkers(incidentToDeleteId);
 
         } else { //Response not ok
