@@ -124,7 +124,6 @@ export async function deleteLocationPin(idToken: string, incidentId: any) {
     //Does not have permission to delete 
     if (docSnapshot.data()?.creatorUid !== uid) {
       throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
-      return false;
     }
 
     await pinDocRef.delete();
