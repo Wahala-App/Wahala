@@ -99,17 +99,16 @@ export async function checkEmailVerification() {
   }
 }
 
-export async function resetPassword(email: string) {
+export async function resetPassword(email: string): Promise<boolean> {
   // Get the current user
   try {
-    const user = auth.currentUser;
-    console.log("In reset password");
-
     await sendPasswordResetEmail(auth, email);
     console.log("✅ Password reset email sent.");
   } catch (error) {
     console.error("❌ Failed to send reset email:", error);
+    return false;
   }
+  return true
 }
 
 export async function login(email: string, password: string) {
@@ -138,7 +137,7 @@ export async function login(email: string, password: string) {
             throw {
                 type: "password",
                 message:
-                "Wrong password. Try again or " +
+                "Wrong email or password. Try again or " +
                 "click Forgot password to reset it.",
             };
         } else if (err.code.includes("auth/too-many-requests")) {
