@@ -31,6 +31,7 @@ export default function getCurrLocation(): Promise<Location> {
 }
 
 export function incidentToIcon(incidentType: IncidentType): string {
+  console.log(incidentType)
   switch (incidentType) {
     case IncidentType.ASSAULT:
       return "/crimeSpecialization/assault.svg";

@@ -1,22 +1,36 @@
 'use server';
 
 import { Incident, IncidentType } from "../api/types";
+import { createClient } from "@supabase/supabase-js";
+import { jwtDecode } from "jwt-decode";
 import { auth } from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 // Helper: Verify the user's Firebase ID token and get their UID
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
+
+
 const serviceAccount : admin.ServiceAccount = { 
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     privateKey: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     clientEmail: process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_CLIENT_EMAIL,
 }
 
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
 }
+
+//const db = admin.firestore(); // ← This is how you get the DB on server
+
+
+// === Initialize Supabase ===
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY! // Use service role for server-side operations
+);
 
 const standardUTCDate = () =>
 {
@@ -27,7 +41,6 @@ const standardUTCDate = () =>
 
       return today
 }
-const db = admin.firestore(); // ← This is how you get the DB on server
 
 async function getAuthenticatedUser(idToken: string) {
   try {
@@ -39,108 +52,129 @@ async function getAuthenticatedUser(idToken: string) {
   }
 }
 
-export async function storeLocationPin(idToken: string, incidentType: string, title: string, description: string, location: string, dateTime: string) {
+
+export async function storeLocationPin(
+  idToken: string,
+  incidentType: string,
+  title: string,
+  description: string,
+  location: string,
+  dateTime: string
+) {
   try {
-      const uid = await getAuthenticatedUser(idToken);
+    const uid = await getAuthenticatedUser(idToken);
 
-      //To ensure standard logged date using UTC for pins for the day
-      const today = parseLocalTimestampToUTC(dateTime, 'date')
-      const pinCollectionRef = db
-        .collection("location-pins")
+    // To ensure standard logged date using UTC for pins for the day
+    const today = parseLocalTimestampToUTC(dateTime, 'date');
 
-      const incidentRef = await pinCollectionRef.add({ 
-            creatorUid: uid,
-            incidentType: incidentType,
-            title: title,
-            description: description,
-            location: location,
-            dateTime: dateTime,
-            dateKey: today, //For quick filtering
-            addedOn: FieldValue.serverTimestamp()
-        })
-        
-      console.log("Location pin saved successfully");
-    } catch (error) {
-      console.error("Failed to store location pub", error);
-      throw { type: "data", message: `Failed to store location pin. Try again: ${error}` };
+    // Use service role key to bypass RLS
+    // We verify ownership manually by extracting uid from idToken
+    const { data, error } = await supabase
+      .from('location_pins')
+      .insert([
+        {
+          creator_uid: uid,
+          incident_type: incidentType,
+          title: title,
+          description: description,
+          location: location,
+          date_time: dateTime,
+          date_key: today, // For quick filtering
+          added_on: new Date().toISOString(),
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error("Failed to store location pin:", error);
+      throw { type: "data", message: `Failed to store location pin. Try again: ${error.message}` };
     }
-  }
 
-export async function retrieveLocationPins(idToken: any): Promise<Incident[]> {
-    try {
-      //To ensure standard logged date using UTC for pins for the day
-      const today = standardUTCDate()
-
-      console.log("In retrievelocationpins")
-      const uid = await getAuthenticatedUser(idToken);
-      
-      const pinCollectionRef = db
-        .collection('location-pins')
-    
-      const querySnapshot = await pinCollectionRef
-         //.where("dateKey", "==", today) // 1. Filter by the specific date
-         .orderBy('addedOn', 'desc')   // 2. order by most recent first
-         .get();
-
-      const latestDoc = querySnapshot.empty ? null : querySnapshot.docs[0];
-
-      if (!latestDoc) {
-        console.log("No pins")
-        return [];
-      }
-
-      else
-      {
-          const pinData = querySnapshot.docs.map(pinDoc => ({id: pinDoc.id,
-          ...pinDoc.data(),
-          } as Incident));
-       //   console.log(pinData)
-          console.log("Location pins obtained successfully");
-          return pinData 
-      }
-
- 
+    console.log("Location pin saved successfully");
+    return data;
   } catch (error) {
-    console.error("Failed to obtain location pin", error);
+    console.error("Failed to store location pin", error);
+    throw { type: "data", message: `Failed to store location pin. Try again: ${error}` };
+  }
+}
+
+export async function retrieveLocationPins(idToken: string): Promise<Incident[]> {
+  try {
+    // To ensure standard logged date using UTC for pins for the day
+    const today = standardUTCDate();
+
+    console.log("In retrieveLocationPins");
+    const uid = await getAuthenticatedUser(idToken);
+
+    const { data, error } = await supabase
+      .from('location_pins')
+      .select('*')
+      .order('added_on', { ascending: false }) // Most recent first
+      .returns<any[]>();
+
+    if (error) {
+      console.error("Failed to obtain location pins:", error);
+      throw { type: "data", message: "Failed to obtain location pins. Try again." };
+    }
+
+    if (!data || data.length === 0) {
+      console.log("No pins");
+      return [];
+    }
+
+    // Map database rows to Incident type
+    const pinData = data.map(pinDoc => ({
+      id: pinDoc.id,
+      ...pinDoc,
+    } as Incident));
+
+    //console.log("pinData:", pinData);
+    console.log("Location pins obtained successfully");
+    return pinData;
+  } catch (error) {
+    console.error("Failed to obtain location pins", error);
     throw { type: "data", message: "Failed to obtain location pins. Try again." };
   }
 }
 
-export async function deleteLocationPin(idToken: string, incidentId: any) {
+export async function deleteLocationPin(idToken: string, incidentId: string) {
   try {
-     const uid = await getAuthenticatedUser(idToken);
-   
-    const pinDocRef = db
-      .collection('location-pins')
-      .doc(incidentId);
+    const uid = await getAuthenticatedUser(idToken);
 
-     const docSnapshot = await pinDocRef.get();
+    // First, fetch the pin to check if the user owns it
+    const { data: pinData, error: fetchError } = await supabase
+      .from('location_pins')
+      .select('creator_uid')
+      .eq('id', incidentId)
+      .single();
 
-    if (!docSnapshot.exists) {
+    if (fetchError || !pinData) {
       console.log(`No pin found for ${incidentId}`);
       return false;
     }
-    
-    //Does not have permission to delete 
-    if (docSnapshot.data()?.creatorUid !== uid) {
+
+    // Check if the user owns this pin
+    if (pinData.creator_uid !== uid) {
       throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
     }
 
-    await pinDocRef.delete();
+    // Delete the pin
+    const { error: deleteError } = await supabase
+      .from('location_pins')
+      .delete()
+      .eq('id', incidentId);
+
+    if (deleteError) {
+      console.error('Failed to delete pin:', deleteError);
+      throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
+    }
+
     console.log(`Deleted pin ${incidentId}`);
     return true;
   } catch (error) {
-    console.error('Failed to delete pin: ', error);
-   throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
+    console.error('Failed to delete pin:', error);
+    throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
   }
-}
-
-
-
-function convertTimestampToDate(timestamp: any) {
-  
-  const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1e6);
-  return date.toLocaleDateString('en-CA');
 }
 
 function parseLocalTimestampToUTC(stored: string, output: string) {
