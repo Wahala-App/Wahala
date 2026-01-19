@@ -15,6 +15,7 @@ import Image from "next/image";
 import Loading from "./loading";
 import { getToken } from "@/app/actions/auth";
 
+
 interface MapRef {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
@@ -114,7 +115,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
         incidents.forEach(incident => addCustomMarker(incident));
     }
 
-    const syncMarkers = (incidentToDeleteId: string) => {
+    const syncMarkers = (incidentToDeleteId: string) => { //Sync markers for deletion
         console.log("Syncing markers for deletion:", incidentToDeleteId);
         const marker = markersRef.current.get(incidentToDeleteId);
 
