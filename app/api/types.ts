@@ -1,6 +1,7 @@
 export interface Incident {
   id: string;
   incidentType: IncidentType;
+  incident_type: IncidentType;
   title: string;
   description?: string;
   location: Location;
