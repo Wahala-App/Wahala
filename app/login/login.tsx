@@ -47,6 +47,7 @@ export default function LoginComponent() {
                     return;
                 }
             
+                setErrorMessage(err.message);
                 console.log("Handle Login Err", err);
             } finally {
                 setLoading(false);
@@ -84,7 +85,7 @@ export default function LoginComponent() {
 
       {
           errorMessage !== "" &&
-          <div className={"text-red-400 mb-2"}>{errorMessage}</div>
+          <div className={"text-red-400 mb-8"}>{errorMessage}</div>
       }
 
       <div className="mb-8">
@@ -98,8 +99,12 @@ export default function LoginComponent() {
         </PillButton>
       </div>
 
-      <div>
+      <div className="mb-8">
           Don't have an account? <u><a href={"/register"}> Create Account.</a></u>
+      </div>
+
+      <div>
+          Forgot your Password? <u><a href={"/reset"}>Reset your Password</a></u>
       </div>
 
       <div className="flex gap-15 mt-6">
