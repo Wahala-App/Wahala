@@ -155,6 +155,8 @@ const parseLocalTimestampToUTC = (stored: string) => {
             dateTime: dateTime
           }
 
+          console.log("Submitting incident data:", bodyData);
+
           const response = await fetch(`/api/dataHandler`, {
           method: 'POST',
           headers: {

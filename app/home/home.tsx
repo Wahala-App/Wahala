@@ -7,6 +7,7 @@ import MapComponent from "../map/map";
 import {Incident, Location} from "@/app/api/types";
 import { getToken } from "../actions/auth";
 import { UserOval } from "./UserOval";
+import {supabase} from "../../lib/supabase";
 
 export default function HomeComponent() {
   
@@ -14,7 +15,7 @@ export default function HomeComponent() {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
     refreshMarkers: () => void;
-    syncMarkers: (incidentId: any) => void;
+    syncMarkers: (incidentId: any) => void; //sync for deletion
   }>(null);
 
   const addRef = useRef<{
@@ -59,9 +60,57 @@ export default function HomeComponent() {
         }
       }, []); // This will now work perfectly alongside your map effect
   
-    // Run on mount AND whenever refreshKey changes
-  useEffect(() => {
+  const [pins, setPins] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+   useEffect(() => {
+    // Fetch initial data
     fetchLocationPins();
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('location_pins_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'location_pins',
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            // New pin added - add to top of list
+            setPins((prev) => [payload.new as Incident, ...prev]);
+            mapRef.current?.addCustomMarker(payload.new as Incident);
+
+          } else if (payload.eventType === 'UPDATE') {
+            // Pin updated - replace it
+            setPins((prev) =>
+              prev.map((pin) =>
+                pin.id === payload.new.id ? (payload.new as Incident) : pin
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            // Pin deleted - remove it
+            setPins((prev) => prev.filter((pin) => pin.id !== payload.old.id));
+            mapRef.current?.syncMarkers(payload.old.id);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+        if (status === 'CLOSED') {
+          setError('Connection closed');
+        }
+      });
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [refreshCount, fetchLocationPins]);
 
 

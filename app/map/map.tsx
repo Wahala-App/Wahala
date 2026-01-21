@@ -15,6 +15,7 @@ import Image from "next/image";
 import Loading from "./loading";
 import { getToken } from "@/app/actions/auth";
 
+
 interface MapRef {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
@@ -54,9 +55,13 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
 
     const lat = incident.location.latitude;
     const lng = incident.location.longitude;
-    //console.log("Adding custom marker at:", lat, lng);
-
-    const el = incidentIcon(incident.incidentType)
+    console.log("Adding custom marker at:", lat, lng);
+    let el;
+    if (incident.incidentType !== undefined) { 
+        el = incidentIcon(incident.incidentType);
+    } else{
+         el = incidentIcon(incident.incident_type); //Handles SQL type
+    }
 
     if (incident.id) {
         if (onMarkerPrimaryClick) {
@@ -110,7 +115,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
         incidents.forEach(incident => addCustomMarker(incident));
     }
 
-    const syncMarkers = (incidentToDeleteId: string) => {
+    const syncMarkers = (incidentToDeleteId: string) => { //Sync markers for deletion
         console.log("Syncing markers for deletion:", incidentToDeleteId);
         const marker = markersRef.current.get(incidentToDeleteId);
 

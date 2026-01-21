@@ -16,6 +16,8 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 
+import { supabase } from "@/lib/supabase";
+
 let credentials
 // Function to get the current user's fresh ID token
 export async function getToken(): Promise<string | null> {
@@ -51,13 +53,31 @@ export async function signup(
 
     await sendEmailVerification(user);
 
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      firstName: firstName,
-      lastName: lastName,
-      email: user.email,
-      createdAt: new Date().toISOString(),
-    });
+    // await setDoc(doc(db, "users", user.uid), {
+    //   uid: user.uid,
+    //   firstName: firstName,
+    //   lastName: lastName,
+    //   email: user.email,
+    //   createdAt: new Date().toISOString(),
+    // });
+    // Store user profile in Supabase
+    const { error: supabaseError } = await supabase
+      .from('users')
+      .insert([
+        {
+          uid: user.uid,
+          email: user.email,
+          first_name: firstName,
+          last_name: lastName,
+          created_at: new Date().toISOString(),
+        }
+      ]);
+
+    if (supabaseError) {
+      console.error("Supabase error:", supabaseError);
+      throw { type: "data", message: "Failed to save user profile" };
+    }
+
 
     console.log("User signed up and save: ", user);
 
