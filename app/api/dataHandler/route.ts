@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) { //Submit.Create
 
         const idToken = authHeader.split('Bearer ')[1];
 
-        storeLocationPin(idToken, body.incidentType, body.title, body.description, body.location, body.dateTime)
+        await storeLocationPin(idToken, body.incidentType, body.title, body.description, body.location, body.dateTime)
 
         console.log("Successfully stored incident")
 
