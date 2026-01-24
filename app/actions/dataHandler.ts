@@ -6,7 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import { auth } from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { supabase
-  
+
  } from "@/lib/server/supabase";
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
@@ -127,6 +127,32 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   } catch (error) {
     console.error("Failed to obtain location pins", error);
     throw { type: "data", message: "Failed to obtain location pins. Try again." };
+  }
+}
+
+export async function retrieverUserDetails(idToken: string) {
+  try {
+
+    const uid = await getAuthenticatedUser(idToken);
+
+    // First, fetch the pin to check if the user owns it
+    const { data: userData, error: fetchError } = await supabase
+      .from('users')
+      .select('uid')
+      .eq('uid', uid)
+      .maybeSingle(); // Returns null instead of throwing error if not found();
+
+    if (fetchError || !userData) {
+      console.log(`No user found with id ${uid}`);
+      return false;
+    }
+
+    console.log(`Found user ${uid}`);
+    return true;
+
+  } catch (error) {
+    console.error('Failed to retrieve user data:', error);
+    throw { type: 'data', message: `Failed to retrieve user data` };
   }
 }
 
