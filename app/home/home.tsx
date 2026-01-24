@@ -7,7 +7,7 @@ import MapComponent from "../map/map";
 import {Incident, Location} from "@/app/api/types";
 import { getToken } from "../actions/auth";
 import { UserOval } from "./UserOval";
-import {supabase} from "../../lib/supabase";
+import {supabase} from "../../lib/server/supabase";
 
 export default function HomeComponent() {
   

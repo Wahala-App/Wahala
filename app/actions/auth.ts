@@ -16,7 +16,7 @@ import {
   browserSessionPersistence,
 } from "firebase/auth";
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/server/supabase";
 
 let credentials
 // Function to get the current user's fresh ID token
