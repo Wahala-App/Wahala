@@ -53,8 +53,8 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
       // ❗ Prevent duplicate markers
     if (markersRef.current.has(incident.id)) return;
 
-    const lat = incident.location.latitude;
-    const lng = incident.location.longitude;
+    const lat = incident.coordinates.latitude;
+    const lng = incident.coordinates.longitude;
     console.log("Adding custom marker at:", lat, lng);
     let el;
     if (incident.incidentType !== undefined) { 

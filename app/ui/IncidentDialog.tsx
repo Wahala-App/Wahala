@@ -15,7 +15,7 @@ interface IncidentDialogProps {
     incidentType: IncidentType;
     title: string;
     description?: string;
-    location: Location;
+    coordinates: Location;
   }) => void;
   selectedIncidentType: IncidentType;
   providedLocation : Location | null;
@@ -136,7 +136,7 @@ const parseLocalTimestampToUTC = (stored: string) => {
       incidentType,
       title: title.trim(),
       description: description.trim() || undefined,
-      location: location!,
+      coordinates: location!,
     });
 
     try 
@@ -151,7 +151,7 @@ const parseLocalTimestampToUTC = (stored: string) => {
             incidentType: incidentType,
             title: title.trim(),
             description: description.trim(),
-            location: location!,
+            coordinates: location!,
             dateTime: dateTime
           }
 

@@ -58,7 +58,7 @@ export async function storeLocationPin(
   incidentType: string,
   title: string,
   description: string,
-  location: string,
+  coordinates: string,
   dateTime: string
 ) {
   try {
@@ -77,7 +77,7 @@ export async function storeLocationPin(
           incident_type: incidentType,
           title: title,
           description: description,
-          location: location,
+          coordinates: coordinates,
           date_time: dateTime,
           date_key: today, // For quick filtering
           added_on: new Date().toISOString(),
