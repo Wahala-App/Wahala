@@ -29,7 +29,7 @@ if (!admin.apps.length) {
 // === Initialize Supabase ===
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY! // Use service role for server-side operations
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for server-side operations
 );
 
 const standardUTCDate = () =>
