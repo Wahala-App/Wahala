@@ -5,7 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import { jwtDecode } from "jwt-decode";
 import { auth } from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-// Helper: Verify the user's Firebase ID token and get their UID
+import { supabase
+  
+ } from "@/lib/server/supabase";
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
 
@@ -22,15 +24,6 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(serviceAccount),
   });
 }
-
-//const db = admin.firestore(); // ← This is how you get the DB on server
-
-
-// === Initialize Supabase ===
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for server-side operations
-);
 
 const standardUTCDate = () =>
 {
