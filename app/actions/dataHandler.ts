@@ -130,7 +130,7 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   }
 }
 
-export async function retrieverUserDetails(idToken: string) {
+export async function retrieverUserInfo(idToken: string) {
   try {
 
     const uid = await getAuthenticatedUser(idToken);
@@ -148,7 +148,7 @@ export async function retrieverUserDetails(idToken: string) {
     }
 
     console.log(`Found user ${uid}`);
-    return true;
+    return userData;
 
   } catch (error) {
     console.error('Failed to retrieve user data:', error);
