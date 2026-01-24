@@ -4,7 +4,7 @@ export interface Incident {
   incident_type: IncidentType;
   title: string;
   description?: string;
-  location: Location;
+  coordinates: Location;
 }
 
 export enum IncidentType {
