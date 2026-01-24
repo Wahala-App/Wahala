@@ -138,7 +138,7 @@ export async function retrieverUserInfo(idToken: string) {
     // First, fetch the pin to check if the user owns it
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('uid')
+      .select('*')
       .eq('uid', uid)
       .maybeSingle(); // Returns null instead of throwing error if not found();
 
