@@ -144,6 +144,7 @@ export async function retrieverUserInfo(idToken: string) {
 
     if (fetchError || !userData) {
       console.log(`No user found with id ${uid}`);
+      console.log(`Error: ${fetchError}`);
       return false;
     }
 
