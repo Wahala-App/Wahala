@@ -133,36 +133,6 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   }
 }
 
-
-
-export async function retrieveUserInfo(idToken: string) {
-  try {
-
-    const uid = await getAuthenticatedUser(idToken);
-
-    // First, fetch the pin to check if the user owns it
-    const { data: userData, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('uid', uid)
-      .maybeSingle(); // Returns null instead of throwing error if not found();
-
-    if (fetchError || !userData) {
-      console.log(`No user found with id ${uid}`);
-      console.log(`Error: ${fetchError}`);
-      return false;
-    }
-
-    console.log(`Found user ${uid}`);
-    return userData;
-
-  } catch (error) {
-    console.error('Failed to retrieve user data:', error);
-    throw { type: 'data', message: `Failed to retrieve user data` };
-  }
-}
-
-
 export async function deleteLocationPin(idToken: string, incidentId: string) {
   try {
     const uid = await getAuthenticatedUser(idToken);
