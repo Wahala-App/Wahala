@@ -53,31 +53,19 @@ export async function signup(
 
     await sendEmailVerification(user);
 
-    // await setDoc(doc(db, "users", user.uid), {
-    //   uid: user.uid,
-    //   firstName: firstName,
-    //   lastName: lastName,
-    //   email: user.email,
-    //   createdAt: new Date().toISOString(),
-    // });
-    // Store user profile in Supabase
-    const { error: supabaseError } = await supabase
-      .from('users')
-      .insert([
-        {
-          uid: user.uid,
-          email: user.email,
-          first_name: firstName,
-          last_name: lastName,
-          created_at: new Date().toISOString(),
-        }
-      ]);
+    // ✅ 3. Call Supabase function directly from client
+    const { data, error } = await supabase.rpc('create_user_profile', {
+      p_uid: user.uid,
+      p_email: user.email,
+      p_first_name: firstName,
+      p_last_name: lastName,
+    });
 
-    if (supabaseError) {
-      console.error("Supabase error:", supabaseError);
-      throw { type: "data", message: "Failed to save user profile" };
+    if (error) {
+      // Rollback Firebase user
+      await user.delete();
+      throw new Error('Failed to create user: ' + error.message);
     }
-
 
     console.log("User signed up and save: ", user);
 

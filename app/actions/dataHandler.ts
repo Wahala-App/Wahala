@@ -130,7 +130,7 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   }
 }
 
-export async function retrieverUserInfo(idToken: string) {
+export async function retrieveUserInfo(idToken: string) {
   try {
 
     const uid = await getAuthenticatedUser(idToken);
