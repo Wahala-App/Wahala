@@ -25,6 +25,11 @@ if (!admin.apps.length) {
   });
 }
 
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!  // Server-side only
+);
+
 const standardUTCDate = () =>
 {
   //To ensure standard logged date using UTC for pins for the day
@@ -130,7 +135,9 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   }
 }
 
-export async function retrieverUserInfo(idToken: string) {
+
+
+export async function retrieveUserInfo(idToken: string) {
   try {
 
     const uid = await getAuthenticatedUser(idToken);
@@ -156,6 +163,7 @@ export async function retrieverUserInfo(idToken: string) {
     throw { type: 'data', message: `Failed to retrieve user data` };
   }
 }
+
 
 export async function deleteLocationPin(idToken: string, incidentId: string) {
   try {

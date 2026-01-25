@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { retrieverUserInfo } from '@/app/actions/dataHandler';
+import { retrieveUserInfo } from '@/app/actions/dataHandler';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest)  {
 
     const idToken = authHeader.split('Bearer ')[1];
 
-    const userData = await retrieverUserInfo(idToken);
+    const userData = await retrieveUserInfo(idToken);
 
     console.log("Successul retrieved User data ")
 
