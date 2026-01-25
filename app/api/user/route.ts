@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { retrieveUserInfo } from '@/app/actions/dataHandler';
+import { retrieveUserInfo } from '@/app/actions/user';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
 
-
+//Can only have one get per route
 export async function GET(request: NextRequest)  {
  try {
    
