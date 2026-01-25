@@ -5,9 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { jwtDecode } from "jwt-decode";
 import { auth } from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { supabase
 
- } from "@/lib/server/supabase";
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
 
