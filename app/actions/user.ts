@@ -117,3 +117,94 @@ export async function retrieveUserInfo(idToken: string) {
 // CREATE POLICY "Deny direct client access"
 // ON users TO anon, authenticated
 // USING (false);
+
+// -- Drop the old function (4 parameters)
+// DROP FUNCTION IF EXISTS create_user_profile(TEXT, TEXT, TEXT, TEXT);
+
+// -- Create the new function (5 parameters with username)
+// CREATE OR REPLACE FUNCTION create_user_profile(
+//   p_uid TEXT,
+//   p_email TEXT,
+//   p_first_name TEXT,
+//   p_last_name TEXT,
+//   p_username TEXT DEFAULT NULL  -- ✅ Optional username parameter
+// )
+// RETURNS json
+// LANGUAGE plpgsql
+// SECURITY DEFINER  -- ✅ Runs with elevated privileges, bypasses RLS
+// AS $$
+// DECLARE
+//   v_result json;
+// BEGIN
+//   -- Validate: Check if user already exists
+//   IF EXISTS (SELECT 1 FROM users WHERE uid = p_uid) THEN
+//     RAISE EXCEPTION 'User already exists';
+//   END IF;
+  
+//   -- Validate: Check if username is taken (if provided)
+//   IF p_username IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE username = p_username) THEN
+//     RAISE EXCEPTION 'Username already taken';
+//   END IF;
+  
+//   -- Insert the user
+//   INSERT INTO users (uid, email, first_name, last_name, username, created_at)
+//   VALUES (p_uid, p_email, p_first_name, p_last_name, p_username, NOW())
+//   RETURNING json_build_object(
+//     'uid', uid,
+//     'email', email,
+//     'first_name', first_name,
+//     'last_name', last_name,
+//     'username', username
+//   ) INTO v_result;
+  
+//   RETURN v_result;
+// END;
+// $$;
+
+// -- Grant execute permission to anon users
+// GRANT EXECUTE ON FUNCTION create_user_profile TO anon, authenticated;
+//-- Drop the old function (4 parameters)
+// DROP FUNCTION IF EXISTS create_user_profile(TEXT, TEXT, TEXT, TEXT, TEXT);
+
+// -- Create the new function (5 parameters with username)
+// CREATE OR REPLACE FUNCTION create_user_profile(
+//   p_uid TEXT,
+//   p_email TEXT,
+//   p_first_name TEXT,
+//   p_last_name TEXT,
+//   p_username TEXT DEFAULT NULL  -- ✅ Optional username parameter
+// )
+// RETURNS json
+// LANGUAGE plpgsql
+// SECURITY DEFINER  -- ✅ Runs with elevated privileges, bypasses RLS
+// AS $$
+// DECLARE
+//   v_result json;
+// BEGIN
+//   -- Validate: Check if user already exists
+//   IF EXISTS (SELECT 1 FROM users WHERE uid = p_uid) THEN
+//     RAISE EXCEPTION 'User already exists';
+//   END IF;
+  
+//   -- Validate: Check if username is taken (if provided)
+//   IF p_username IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE username = p_username) THEN
+//     RAISE EXCEPTION 'Username already taken';
+//   END IF;
+  
+//   -- Insert the user
+//   INSERT INTO users (uid, email, first_name, last_name, user_name, created_at)
+//   VALUES (p_uid, p_email, p_first_name, p_last_name, p_user_name, NOW())
+//   RETURNING json_build_object(
+//     'uid', uid,
+//     'email', email,
+//     'first_name', first_name,
+//     'last_name', last_name,
+//     'user_name', user_name
+//   ) INTO v_result;
+  
+//   RETURN v_result;
+// END;
+// $$;
+
+// -- Grant execute permission to anon users
+// GRANT EXECUTE ON FUNCTION create_user_profile TO anon, authenticated;
