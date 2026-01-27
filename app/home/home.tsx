@@ -158,10 +158,12 @@ export default function HomeComponent() {
     }
   }
 
+
   return (
     <div className="h-screen">
       <div className="flex h-full">
-        <div className="flex-[0.4] flex flex-col items-center justify-center w-9/10">
+        {/* CHANGED: Hide SearchAndAdd on mobile (screens smaller than md) */}
+        <div className="hidden md:flex flex-[0.2] flex-col items-center justify-center w-9/10">
           <SearchAndAdd
             addRef = {addRef}
             addCustomMarker={ (incident: Incident) => {mapRef.current?.addCustomMarker(incident)}}
@@ -170,7 +172,8 @@ export default function HomeComponent() {
             selectedIncidentId={selectedIncidentId}
           />
         </div>
-        <div className="flex-[0.6]">
+        {/* CHANGED: Full width on mobile, flex-[0.6] on desktop */}
+        <div className="flex-1 md:flex-[0.8]">
           <Suspense fallback={<Loading />}>
             <MapComponent ref={mapRef} onMarkerPrimaryClick={handleMarkerPrimaryClick} onMarkerSecondaryClick={handleMarkerSecondaryClick} onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}/>
             <div className="absolute top-4 right-4 z-10 text-black">
@@ -182,4 +185,3 @@ export default function HomeComponent() {
     </div>
   );
 }
-
