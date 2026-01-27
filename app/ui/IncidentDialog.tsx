@@ -207,7 +207,8 @@ useEffect(() => {
     const errors = {
       title: !title.trim(),
       description: !description.trim(),
-      evidenceFile: !evidenceFile,
+      // Evidence is optional for now
+      evidenceFile: false,
       location: !location,
     };
 
@@ -228,7 +229,7 @@ useEffect(() => {
     coordinates: location!,
     severity,
     areaSize,
-    evidenceFile: evidenceFile!,
+    evidenceFile: evidenceFile ?? undefined,
   });
 
   try {
@@ -480,14 +481,11 @@ useEffect(() => {
             </div>
 
             <div>
-              {validationErrors.evidenceFile && (
-                <p className="text-xs text-red-600 mb-1">⚠️ Evidence file is required</p>
-              )}
               {fileError && (
                 <p className="text-xs text-red-600 mb-1">⚠️ {fileError}</p>
               )}
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evidence Media <span className="text-red-500">* (Required, max 4MB)</span>
+                Evidence Media <span className="text-gray-500">(Optional, max 4MB)</span>
               </label>
               <input
                 ref={fileInputRef}

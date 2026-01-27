@@ -7,9 +7,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Hamburger from "../ui/hamburger";
 
-export const UserOval = (props: { recalibrate: () => void }) => {
+export const UserOval = (props: {
+  recalibrate: () => void;
+  isDetailsOpened?: boolean;
+  setIsDetailsOpened?: (open: boolean) => void;
+}) => {
   const router = useRouter();
-  const [isDetailsOpened, setIsDetailsOpened] = useState(false);
+  const [internalIsDetailsOpened, setInternalIsDetailsOpened] = useState(false);
+  const isDetailsOpened = props.isDetailsOpened ?? internalIsDetailsOpened;
+  const setIsDetailsOpened = props.setIsDetailsOpened ?? setInternalIsDetailsOpened;
   const [address, setAddress] = useState("");
   const [userName, setUserName] = useState<string>("User");
   useEffect(() => {
@@ -101,7 +107,7 @@ export const UserOval = (props: { recalibrate: () => void }) => {
 
    //userName = localStorage.getItem("userName")|| "Username";
 
-  const headerDialog: {[string: string] : string} = {
+  const headerDialog: Record<string, string> = {
       "Latest News": "/iconText/news.svg",
       "Discussions": "/iconText/discuss.svg",
       "Help/Support": "/iconText/support.svg",
@@ -126,13 +132,14 @@ export const UserOval = (props: { recalibrate: () => void }) => {
         className={`mt-2 bg-background text-foreground px-2 py-2 rounded-xl overflow-hidden transition-all duration-300 ${isDetailsOpened ? "opacity-100" : "max-h-0 opacity-0"} `}
       >
         <div className="grid grid-cols-2 gap-2 my-5 mx-5">
-            {Object.entries(headerDialog).map(([key, value]) => (
+            {Object.entries(headerDialog).map(([label, iconPath]) => (
                 <IconText
-                    iconImage={value}
+                    key={`useroval-item-${label}`}
+                    iconImage={iconPath}
                     onClick={() => {}}
                     className={""}
                 >
-                    {key}
+                    {label}
                 </IconText>
             ))}
         </div>
