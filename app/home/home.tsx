@@ -4,10 +4,11 @@ import React, {Suspense, useEffect, useRef, useCallback, useState} from "react";
 import SearchAndAdd from "./SearchAndAdd";
 import Loading from "./Loading";
 import MapComponent from "../map/map";
-import {Incident, Location} from "@/app/api/types";
+import {Incident, Location, IncidentType} from "@/app/api/types";
 import { getToken } from "../actions/auth";
 import { UserOval } from "./UserOval";
 import {supabase} from "../../lib/server/supabase";
+import { IncidentDialog } from "../ui/IncidentDialog";
 
 export default function HomeComponent() {
   
@@ -15,7 +16,7 @@ export default function HomeComponent() {
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
     refreshMarkers: () => void;
-    syncMarkers: (incidentId: any) => void; //sync for deletion
+    syncMarkers: (incidentId: any) => void;
   }>(null);
 
   const addRef = useRef<{
@@ -24,6 +25,11 @@ export default function HomeComponent() {
 
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
+  
+  // ADD: Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogLocation, setDialogLocation] = useState<Location | null>(null);
+  const [selectedIncidentType] = useState<IncidentType>(IncidentType.NONE);
 
   const triggerRefresh = () => setRefreshCount((prev) => prev + 1);
 
@@ -31,8 +37,6 @@ export default function HomeComponent() {
         try {
           const idToken = await getToken();
           if (!idToken) {
-            // If no user is logged in, we might want to clear existing markers
-            // or simply not fetch any. For now, we'll just return.
             return;
           }
           
@@ -46,7 +50,6 @@ export default function HomeComponent() {
           if (response.ok) {
             const pins = await response.json(); 
             
-            // Directly add the pins fetched from the database to the map
             for (const pin of pins) {
                if (mapRef.current) {
                   mapRef.current.addCustomMarker(pin);
@@ -58,23 +61,21 @@ export default function HomeComponent() {
         } catch (err) {
           console.log(err);
         }
-      }, []); // This will now work perfectly alongside your map effect
+      }, []);
   
   const [pins, setPins] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
    useEffect(() => {
-    // Fetch initial data
     fetchLocationPins();
 
-    // Subscribe to real-time changes
     const channel = supabase
       .channel('location_pins_changes')
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen for INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'location_pins',
         },
@@ -82,19 +83,16 @@ export default function HomeComponent() {
           console.log('Real-time update received:', payload);
 
           if (payload.eventType === 'INSERT') {
-            // New pin added - add to top of list
             setPins((prev) => [payload.new as Incident, ...prev]);
             mapRef.current?.addCustomMarker(payload.new as Incident);
 
           } else if (payload.eventType === 'UPDATE') {
-            // Pin updated - replace it
             setPins((prev) =>
               prev.map((pin) =>
                 pin.id === payload.new.id ? (payload.new as Incident) : pin
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            // Pin deleted - remove it
             setPins((prev) => prev.filter((pin) => pin.id !== payload.old.id));
             mapRef.current?.syncMarkers(payload.old.id);
           }
@@ -107,7 +105,6 @@ export default function HomeComponent() {
         }
       });
 
-    // Cleanup subscription
     return () => {
       supabase.removeChannel(channel);
     };
@@ -119,16 +116,52 @@ export default function HomeComponent() {
   };
 
   const handlePinAddition = (lat: number, lon: number) => {
-    addRef.current?.openDialog({ latitude: lat, longitude: lon });
+    // Open dialog with clicked location
+    setDialogLocation({ latitude: lat, longitude: lon });
+    setIsDialogOpen(true);
   }
 
+  // ADD: Dialog submit handler
+  const handleDialogSubmit = async (incidentData: any) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        console.error('No authentication token found.');
+        return;
+      }
+
+      const response = await fetch('/api/dataHandler', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(incidentData)
+      });
+      
+      if (!response.ok) throw new Error('Failed to create incident');
+      
+      mapRef.current?.addCustomMarker(incidentData);
+      triggerRefresh();
+    } catch (error) {
+      console.error('Error creating incident:', error);
+    } finally {
+      setIsDialogOpen(false);
+      setDialogLocation(null);
+    }
+  };
+
+  // ADD: Dialog close handler
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setDialogLocation(null);
+  };
+
   const handleMarkerPrimaryClick = (incidentId: string) => {
-    //console.log("Marker clicked:", incidentId);
     setSelectedIncidentId((prev) => prev === null ? incidentId : null);
   };
 
   const handleMarkerSecondaryClick = async (incidentId: string) => {
-    //console.log("Marker right clicked:", incidentId);
     try {
         const idToken = await getToken();
 
@@ -139,14 +172,11 @@ export default function HomeComponent() {
             },
         });
       
-        //No need to refresh simply delete the marker with specific id
         if (response.ok) {
-
             const incidentToDeleteId= await response.json(); 
             console.log("Yur=>", incidentToDeleteId)
             mapRef.current?.syncMarkers(incidentToDeleteId);
-
-        } else { //Response not ok
+        } else {
             const errorText = await response.text();
             console.error('Delete failed:', response.status, errorText);
             return;
@@ -158,11 +188,10 @@ export default function HomeComponent() {
     }
   }
 
-
   return (
     <div className="h-screen">
       <div className="flex h-full">
-        {/* CHANGED: Hide SearchAndAdd on mobile (screens smaller than md) */}
+        {/* Hide SearchAndAdd on mobile */}
         <div className="hidden md:flex flex-[0.2] flex-col items-center justify-center w-9/10">
           <SearchAndAdd
             addRef = {addRef}
@@ -170,18 +199,35 @@ export default function HomeComponent() {
             onIncidentChanged={triggerRefresh}
             incidentTrigger={refreshCount}
             selectedIncidentId={selectedIncidentId}
+            // Pass dialog handlers to QuickAdd
+            openDialog={() => setIsDialogOpen(true)}
+            setDialogLocation={setDialogLocation}
           />
         </div>
-        {/* CHANGED: Full width on mobile, flex-[0.6] on desktop */}
+        {/* Full width on mobile */}
         <div className="flex-1 md:flex-[0.8]">
           <Suspense fallback={<Loading />}>
-            <MapComponent ref={mapRef} onMarkerPrimaryClick={handleMarkerPrimaryClick} onMarkerSecondaryClick={handleMarkerSecondaryClick} onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}/>
+            <MapComponent 
+              ref={mapRef} 
+              onMarkerPrimaryClick={handleMarkerPrimaryClick} 
+              onMarkerSecondaryClick={handleMarkerSecondaryClick} 
+              onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}
+            />
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval recalibrate={handleRecalibrate} />
             </div>
           </Suspense>
         </div>
       </div>
+
+      {/* ADD: Dialog at root level - works on mobile and desktop */}
+      <IncidentDialog
+        isOpen={isDialogOpen}
+        onClose={handleDialogClose}
+        onSubmit={handleDialogSubmit}
+        selectedIncidentType={selectedIncidentType}
+        providedLocation={dialogLocation}
+      />
     </div>
   );
 }

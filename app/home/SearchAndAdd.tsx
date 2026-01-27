@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Incident } from "../api/types";
+import { Incident, Location } from "../api/types";
 import { IncidentSearch, IncidentSearchProps } from "./IncidentSearch";
 import { QuickAdd, QuickAddProps } from "./QuickAdd";
 import { getToken } from "@/app/actions/auth";
@@ -12,18 +12,26 @@ interface SearchAndAddProps extends IncidentSearchProps, QuickAddProps {
 }
 
 export default function SearchAndAdd(
-     { addCustomMarker, onIncidentChanged, selectedIncidentId, incidentTrigger, addRef }: SearchAndAddProps & { addRef: any }
+  { 
+    addCustomMarker, 
+    onIncidentChanged, 
+    selectedIncidentId, 
+    incidentTrigger, 
+    addRef,
+    openDialog,
+    setDialogLocation 
+  }: SearchAndAddProps & { 
+    addRef: any;
+    openDialog: () => void;
+    setDialogLocation: (location: Location | null) => void;
+  }
 ) {
-  // Logic: Coordinate data refresh between siblings
-
   useEffect(() => {
-    // Note: This timeout is a bit fragile (race condition risk with map load).
-    // Consider checking if mapRef.current is ready instead of time.
     const timer = setTimeout(async () => {
       try {
         const token = await getToken();
         if (!token) {
-            return; // No user logged in, so no incidents to fetch
+            return;
         }
         const response = await fetch('/api/dataHandler', {
             headers: {
@@ -42,7 +50,6 @@ export default function SearchAndAdd(
 
   return (
     <div className="flex flex-col gap-10 p-10 h-screen overflow-hidden">
-      {/* Top Section: Search & List */}
       <div className="flex-[0.80] min-h-0">
         <IncidentSearch 
           selectedIncidentId={selectedIncidentId} 
@@ -50,12 +57,13 @@ export default function SearchAndAdd(
         />
       </div>
 
-      {/* Bottom Section: Actions */}
       <div className="flex-[0.20]">
         <QuickAdd
-          ref = {addRef}
+          ref={addRef}
           addCustomMarker={addCustomMarker} 
-          onIncidentChanged={onIncidentChanged} 
+          onIncidentChanged={onIncidentChanged}
+          openDialog={openDialog}
+          setDialogLocation={setDialogLocation}
         />
       </div>
     </div>
