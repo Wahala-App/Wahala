@@ -30,29 +30,36 @@ export async function GET(request: NextRequest)  {
  }
 }
 
-export async function POST(request: NextRequest) { //Submit.Create
-
+export async function POST(request: NextRequest) {
   try {
-        const body = await request.json();
-        const authHeader = request.headers.get('authorization');
+    const body = await request.json();
+    const authHeader = request.headers.get('authorization');
 
-        if (!authHeader?.startsWith('Bearer ')) {
-            return new Response(JSON.stringify({ error: 'No idToken provided' }), { status: 401 });
-        }
-
-        const idToken = authHeader.split('Bearer ')[1];
-
-        await storeLocationPin(idToken, body.incidentType, body.title, body.description, body.coordinates, body.dateTime)
-
-        console.log("Successfully stored incident")
-
-        return NextResponse.json("Success", { status: 200 });    
-    } catch (error) {
-        console.error('Error storing incident:', error);
-        return NextResponse.json(
-            { error: error },
-            { status: 400 });
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'No idToken provided' }), { status: 401 });
     }
+
+    const idToken = authHeader.split('Bearer ')[1];
+
+    // No file handling needed - we already have the S3 URL
+    await storeLocationPin(
+      idToken,
+      body.incidentType,
+      body.title,
+      body.description,
+      body.coordinates,
+      body.dateTime,
+      body.severity,
+      body.areaSize,
+      body.evidenceUrl || null // Just pass the URL
+    );
+
+    console.log("Successfully stored incident");
+    return NextResponse.json("Success", { status: 200 });
+  } catch (error) {
+    console.error('Error storing incident:', error);
+    return NextResponse.json({ error: error }, { status: 400 });
+  }
 }
       
  export async function PUT() { //Update but not delete

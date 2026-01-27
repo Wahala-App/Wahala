@@ -2,7 +2,7 @@ import Image from "next/image";
 import {IconText} from "@/app/ui/IconText";
 import { PillButton } from "../ui/button";
 import { auth } from "@/lib/firebase";
-import { logout } from "../actions/auth";
+import { logout, getToken } from "../actions/auth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Hamburger from "../ui/hamburger";
@@ -11,7 +11,7 @@ export const UserOval = (props: { recalibrate: () => void }) => {
   const router = useRouter();
   const [isDetailsOpened, setIsDetailsOpened] = useState(false);
   const [address, setAddress] = useState("");
-
+  const [userName, setUserName] = useState<string>("User");
   useEffect(() => {
     const storedLocation = localStorage.getItem("userLocation");
 
@@ -51,16 +51,55 @@ export const UserOval = (props: { recalibrate: () => void }) => {
     }
   }, []);
 
+  // NEW: Fetch and store username
+  useEffect(() => {
+    const fetchAndStoreUserName = async () => {
+      // Check if username is already in localStorage
+      const storedUserName = localStorage.getItem("userName");
+      if (storedUserName) {
+        return; // Already fetched
+      }
+
+      try {
+        const idToken = await getToken();
+        if (!idToken) {
+          return;
+        }
+        
+        const response = await fetch('/api/user', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user_name) {
+            localStorage.setItem("userName", data.user_name);
+            setUserName(data.user_name)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching username:", error);
+      }
+    };
+
+    fetchAndStoreUserName();
+  }, []);
+
   function handleOpenDetails() {
     setIsDetailsOpened(!isDetailsOpened);
   }
 
   const handleLogout = async () => {
+    // Clear stored username on logout
+    localStorage.removeItem("userName");
     await logout();
     router.push("/login");
   }
 
-  const userName: string = auth.currentUser?.email || "Username";
+   //userName = localStorage.getItem("userName")|| "Username";
 
   const headerDialog: {[string: string] : string} = {
       "Latest News": "/iconText/news.svg",

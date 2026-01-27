@@ -1,11 +1,9 @@
-'use server';
-
 import { Incident, IncidentType } from "../api/types";
 import { createClient } from "@supabase/supabase-js";
 import { jwtDecode } from "jwt-decode";
 import { auth } from 'firebase-admin';
+import {deleteFileFromS3} from './uploadFile';
 import { FieldValue } from 'firebase-admin/firestore';
-
 import * as admin from 'firebase-admin';
 // === Initialize Firebase Admin ===
 
@@ -27,6 +25,8 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!  // Server-side only
 );
+
+
 
 const standardUTCDate = () =>
 {
@@ -55,14 +55,18 @@ export async function storeLocationPin(
   title: string,
   description: string,
   coordinates: string,
-  dateTime: string
+  dateTime: string,
+  severity: string,
+  areaSize: string,
+  evidenceUrl: string,
 ) {
   try {
     const uid = await getAuthenticatedUser(idToken);
-
+    
+    console.log("date time, ", dateTime)
     // To ensure standard logged date using UTC for pins for the day
     const today = parseLocalTimestampToUTC(dateTime, 'date');
-
+    
     // Use service role key to bypass RLS
     // We verify ownership manually by extracting uid from idToken
     const { data, error } = await supabase
@@ -75,6 +79,9 @@ export async function storeLocationPin(
           description: description,
           coordinates: coordinates,
           date_time: dateTime,
+          severity: severity,
+          area_size: areaSize,
+          evidence_url: evidenceUrl,
           date_key: today, // For quick filtering
           added_on: new Date().toISOString(),
         }
@@ -137,10 +144,10 @@ export async function deleteLocationPin(idToken: string, incidentId: string) {
   try {
     const uid = await getAuthenticatedUser(idToken);
 
-    // First, fetch the pin to check if the user owns it
+    // First, fetch the pin to check if the user owns it and get evidence URL
     const { data: pinData, error: fetchError } = await supabase
       .from('location_pins')
-      .select('creator_uid')
+      .select('creator_uid, evidence_url')
       .eq('id', incidentId)
       .single();
 
@@ -154,15 +161,27 @@ export async function deleteLocationPin(idToken: string, incidentId: string) {
       throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
     }
 
-    // Delete the pin
+    // ADDED: Delete the evidence file from S3 if it exists
+    if (pinData.evidence_url) {
+      try {
+        await deleteFileFromS3(pinData.evidence_url);
+        console.log(`Deleted evidence file for pin ${incidentId}`);
+      } catch (deleteFileError) {
+        console.error('Failed to delete evidence file from S3:', deleteFileError);
+        // Continue with pin deletion even if file deletion fails
+        // The file might have already been deleted or the URL might be invalid
+      }
+    }
+
+    // Delete the pin from database
     const { error: deleteError } = await supabase
       .from('location_pins')
       .delete()
       .eq('id', incidentId);
 
     if (deleteError) {
-      console.error('Failed to delete pin:', deleteError);
-      throw { type: 'data', message: `Failed to delete pin ${incidentId}` };
+      console.error('Failed to delete pin data:', deleteError);
+      throw { type: 'data', message: `Failed to delete pin ${incidentId} data` };
     }
 
     console.log(`Deleted pin ${incidentId}`);
@@ -174,6 +193,7 @@ export async function deleteLocationPin(idToken: string, incidentId: string) {
 }
 
 function parseLocalTimestampToUTC(stored: string, output: string) {
+  console.log(stored)
   // 1. Regex to find exactly "+HH:mm" or "-HH:mm" inside the GMT parentheses
   const offsetMatch = stored.match(/GMT([+-]\d{2}:\d{2})/);
   if (!offsetMatch) throw new Error("Offset not found");
