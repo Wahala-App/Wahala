@@ -30,3 +30,14 @@ export interface Location {
   latitude: number;
   longitude: number;
 }
+
+export interface IncidentUpdate {
+  id: string;
+  incident_id: string;
+  creator_uid: string;
+  creator_username?: string;
+  body: string;
+  severity: number;
+  media_url?: string;
+  created_at: string;
+}
