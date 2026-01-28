@@ -1,33 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
-import { deleteLocationPin, storeLocationPin, retrieveLocationPins } from '@/app/actions/dataHandler';
+import {
+  deleteLocationPin,
+  storeLocationPin,
+  retrieveLocationPins,
+  retrieveLocationPinById,
+} from '@/app/actions/dataHandler';
 const DATA_FILE = path.join(process.cwd(), 'data', 'incidents.json');
 
 
 
-export async function GET(request: NextRequest)  {
- try {
-   
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'No idToken provided' }), { status: 401 });
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "No idToken provided" }), {
+        status: 401,
+      });
     }
 
-    const idToken = authHeader.split('Bearer ')[1];
+    const idToken = authHeader.split("Bearer ")[1];
+
+    const url = new URL(request.url);
+    const incidentId = url.searchParams.get("id");
+
+    if (incidentId) {
+      const pin = await retrieveLocationPinById(idToken, incidentId);
+
+      if (!pin) {
+        return NextResponse.json(
+          { error: "Incident not found" },
+          { status: 404 }
+        );
+      }
+
+      console.log("Retrieved single incident");
+      return NextResponse.json(pin, { status: 200 });
+    }
 
     const pins = await retrieveLocationPins(idToken);
 
-    console.log("Retrieved incidents")
+    console.log("Retrieved incidents");
 
     return NextResponse.json(pins, { status: 200 });
-       
-      
-    } catch (error) {
-      console.error('Error retrieveing incident:', error);
-      return NextResponse.json(
-        { error: `Error retrieveing incident: ${error}` },
-        { status: 400 });
- }
+  } catch (error) {
+    console.error("Error retrieveing incident:", error);
+    return NextResponse.json(
+      { error: `Error retrieveing incident: ${error}` },
+      { status: 400 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

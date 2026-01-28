@@ -22,8 +22,8 @@ if (!admin.apps.length) {
 }
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!  // Server-side only
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!  // Server-side only
 );
 
 
@@ -137,6 +137,42 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
   } catch (error) {
     console.error("Failed to obtain location pins", error);
     throw { type: "data", message: "Failed to obtain location pins. Try again." };
+  }
+}
+
+export async function retrieveLocationPinById(
+  idToken: string,
+  incidentId: string
+): Promise<Incident | null> {
+  try {
+    console.log("In retrieveLocationPinById", incidentId);
+    const uid = await getAuthenticatedUser(idToken);
+
+    const { data, error } = await supabase
+      .from("location_pins")
+      .select("*")
+      .eq("id", incidentId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Failed to obtain location pin:", error);
+      throw { type: "data", message: "Failed to obtain location pin. Try again." };
+    }
+
+    if (!data) {
+      console.log("No pin found for id", incidentId);
+      return null;
+    }
+
+    const pinData = {
+      id: data.id,
+      ...data,
+    } as Incident;
+
+    return pinData;
+  } catch (error) {
+    console.error("Failed to obtain location pin", error);
+    throw { type: "data", message: "Failed to obtain location pin. Try again." };
   }
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useMemo, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Paperclip, 
-  Send 
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  ArrowLeft,
+  MapPin,
+  Paperclip,
+  Send,
 } from "lucide-react";
+import { getToken } from "@/app/actions/auth";
 
 // --- TYPES ---
 type MockUpdate = {
@@ -22,15 +23,16 @@ type MockUpdate = {
 };
 
 // --- MOCK DATA ---
-const INCIDENT = {
+const INCIDENT_DEMO = {
   id: "demo-1",
   type: "Robbery",
   title: "Armed robbery near Lekki Phase 1 gate",
-  description: "Multiple reports of armed robbery targeting cars at the main Lekki Phase 1 gate. Stay away from the area.",
+  description:
+    "Multiple reports of armed robbery targeting cars at the main Lekki Phase 1 gate. Stay away from the area.",
   location: "Lekki Phase 1 Gate, Lagos",
   createdAt: "Today · 8:05 PM",
   authorInitial: "W",
-  author: "wahala-reports"
+  author: "wahala-reports",
 };
 
 const INITIAL_UPDATES: MockUpdate[] = [
@@ -100,14 +102,73 @@ function SeverityGauge({ average }: { average: number }) {
 
 export default function IncidentFeedPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const incidentId = (params?.id ?? "") as string;
+
+  const [incident, setIncident] = useState(INCIDENT_DEMO);
   const [updates, setUpdates] = useState(INITIAL_UPDATES);
   const [inputValue, setInputValue] = useState("");
   const updatesEndRef = useRef<HTMLDivElement>(null);
 
   const averageSeverity = useMemo(() => {
-    const total = updates.reduce((acc, curr) => acc + curr.severity, 8); 
+    const total = updates.reduce((acc, curr) => acc + curr.severity, 8);
     return total / (updates.length + 1);
   }, [updates]);
+
+  useEffect(() => {
+    const loadIncident = async () => {
+      if (!incidentId) return;
+      try {
+        const idToken = await getToken();
+        if (!idToken) return;
+
+        const res = await fetch(`/api/dataHandler?id=${incidentId}`, {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to load incident", res.status);
+          return;
+        }
+
+        const data: any = await res.json();
+
+        const type =
+          data.incidentType ||
+          data.incident_type ||
+          INCIDENT_DEMO.type;
+
+        let locationText = INCIDENT_DEMO.location;
+        if (data.coordinates) {
+          locationText = String(data.coordinates);
+        }
+
+        let createdAt = INCIDENT_DEMO.createdAt;
+        if (data.added_on) {
+          createdAt = new Date(data.added_on).toLocaleString();
+        } else if (data.date_time) {
+          createdAt = String(data.date_time);
+        }
+
+        setIncident({
+          id: data.id ?? incidentId,
+          type,
+          title: data.title ?? INCIDENT_DEMO.title,
+          description: data.description ?? INCIDENT_DEMO.description,
+          location: locationText,
+          createdAt,
+          authorInitial: INCIDENT_DEMO.authorInitial,
+          author: INCIDENT_DEMO.author,
+        });
+      } catch (err) {
+        console.error("Error loading incident details", err);
+      }
+    };
+
+    loadIncident();
+  }, [incidentId]);
 
   const handlePost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +216,7 @@ export default function IncidentFeedPage() {
             <div className="flex flex-col items-center flex-shrink-0 w-10">
               {/* Parent Avatar: w-10 (40px) */}
               <div className="w-10 h-10 rounded-full bg-[#3A3A3A] flex items-center justify-center text-base font-bold text-white z-10 ring-4 ring-[#0F0F0F]">
-                {INCIDENT.authorInitial}
+                {incident.authorInitial}
               </div>
               {/* Vertical Line Start: 
                   Centered under 40px avatar = 20px. 
@@ -167,17 +228,17 @@ export default function IncidentFeedPage() {
             {/* Content Column */}
             <div className="flex-1 pb-6">
               <div className="flex items-center gap-2 mb-1">
-                 <span className="text-xs text-gray-500 font-medium">@{INCIDENT.author}</span>
+                 <span className="text-xs text-gray-500 font-medium">@{incident.author}</span>
                  <span className="text-[10px] text-gray-500">•</span>
-                 <span className="text-xs text-gray-500">{INCIDENT.createdAt}</span>
+                 <span className="text-xs text-gray-500">{incident.createdAt}</span>
               </div>
               
-              <h2 className="text-lg font-bold leading-tight mb-2 text-white">{INCIDENT.title}</h2>
-              <p className="text-sm text-gray-300 leading-relaxed mb-3">{INCIDENT.description}</p>
+              <h2 className="text-lg font-bold leading-tight mb-2 text-white">{incident.title}</h2>
+              <p className="text-sm text-gray-300 leading-relaxed mb-3">{incident.description}</p>
               
               <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-white/5 py-1 px-2 rounded-md w-fit">
                 <MapPin size={12} />
-                <span>{INCIDENT.location}</span>
+                <span>{incident.location}</span>
               </div>
             </div>
           </div>

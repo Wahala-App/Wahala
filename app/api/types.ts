@@ -5,6 +5,8 @@ export interface Incident {
   title: string;
   description?: string;
   coordinates: Location;
+  // Stored as string in Supabase, but treated as 1–10 scale
+  severity?: number | string;
 }
 
 export enum IncidentType {

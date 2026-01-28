@@ -1,6 +1,6 @@
 "use client";
 
-import React, {Suspense, useEffect, useRef, useCallback, useState} from "react";
+import React, {Suspense, useEffect, useRef, useCallback, useState, useMemo} from "react";
 import clsx from "clsx";
 import SearchAndAdd from "./SearchAndAdd";
 import Loading from "./Loading";
@@ -13,6 +13,7 @@ import { IncidentDialog } from "../ui/IncidentDialog";
 import BottomNav, { BottomNavTab } from "../ui/BottomNav";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import IncidentDetailsPopover from "@/app/ui/IncidentDetailsPopover";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -76,6 +77,11 @@ export default function HomeComponent() {
   const [pins, setPins] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedIncident = useMemo(
+    () => pins.find((pin) => pin.id === selectedIncidentId) ?? null,
+    [pins, selectedIncidentId]
+  );
 
    useEffect(() => {
     fetchLocationPins();
@@ -187,7 +193,7 @@ export default function HomeComponent() {
   };
 
   const handleMarkerPrimaryClick = (incidentId: string) => {
-    setSelectedIncidentId((prev) => prev === null ? incidentId : null);
+    setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
   };
 
   const handleMarkerSecondaryClick = async (incidentId: string) => {
@@ -376,6 +382,31 @@ export default function HomeComponent() {
             />
           </div>
         </div>
+      )}
+
+      {/* Incident details popover/sheet from map pins */}
+      {selectedIncident && (
+        <>
+          {/* Desktop / tablet popover */}
+          <div className="hidden md:block fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[420px] max-w-[90vw]">
+            <IncidentDetailsPopover
+              incident={selectedIncident}
+              onClose={() => setSelectedIncidentId(null)}
+              onViewFullReport={(id: string) => router.push(`/report/${id}`)}
+            />
+          </div>
+
+          {/* Mobile full-screen bottom sheet (nearly flush with bottom nav) */}
+          <div className="md:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm flex items-end pb-14">
+            <div className="w-full px-4 pb-6 pt-4 bg-background rounded-t-3xl">
+              <IncidentDetailsPopover
+                incident={selectedIncident}
+                onClose={() => setSelectedIncidentId(null)}
+                onViewFullReport={(id: string) => router.push(`/report/${id}`)}
+              />
+            </div>
+          </div>
+        </>
       )}
 
       {/* ADD: Dialog at root level - works on mobile and desktop */}
