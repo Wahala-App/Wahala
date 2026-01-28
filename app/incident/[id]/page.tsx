@@ -7,8 +7,10 @@ import {
   MapPin,
   Paperclip,
   Send,
+  X,
 } from "lucide-react";
 import { getToken } from "@/app/actions/auth";
+import { getCachedAddress, setCachedAddress } from "@/app/utils/addressCache";
 
 // --- TYPES ---
 type MockUpdate = {
@@ -33,6 +35,7 @@ const INCIDENT_DEMO = {
   createdAt: "Today · 8:05 PM",
   authorInitial: "W",
   author: "wahala-reports",
+  evidence_url: undefined as string | undefined,
 };
 
 const INITIAL_UPDATES: MockUpdate[] = [
@@ -70,32 +73,25 @@ const INITIAL_UPDATES: MockUpdate[] = [
 // --- COMPONENTS ---
 
 function SeverityGauge({ average }: { average: number }) {
-  const bars = Math.min(4, Math.max(1, Math.round((average / 10) * 4)));
+  const numericSeverity = Math.min(10, Math.max(1, average));
   
-  const getColor = (avg: number) => {
-    if (avg <= 3) return "bg-green-500";
-    if (avg <= 6) return "bg-yellow-500";
-    if (avg <= 8) return "bg-orange-500";
-    return "bg-red-500";
-  };
-
-  const activeColor = getColor(average);
+  const severityInfo = (() => {
+    if (numericSeverity <= 3) return { label: "Low", color: "text-emerald-500" };
+    if (numericSeverity <= 6) return { label: "Medium", color: "text-amber-500" };
+    if (numericSeverity <= 8) return { label: "High", color: "text-orange-500" };
+    return { label: "Critical", color: "text-red-500" };
+  })();
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/5 border border-white/10">
-      <span className="text-[10px] font-bold tracking-wider text-white/60">SEVERITY</span>
-      <div className="flex items-end gap-[3px] h-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className={`w-[3px] rounded-sm transition-all duration-300 ${
-              i <= bars ? activeColor : "bg-white/10"
-            }`}
-            style={{ height: `${6 + i * 4}px` }}
-          />
-        ))}
-      </div>
-      <span className="text-[10px] font-mono text-white/60">{average.toFixed(1)}/10</span>
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-black uppercase tracking-widest text-foreground/40 truncate">
+        Severity
+      </span>
+      <span
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border border-current ${severityInfo.color}`}
+      >
+        {severityInfo.label} · {numericSeverity.toFixed(1)}/10
+      </span>
     </div>
   );
 }
@@ -109,6 +105,9 @@ export default function IncidentFeedPage() {
   const [updates, setUpdates] = useState(INITIAL_UPDATES);
   const [inputValue, setInputValue] = useState("");
   const updatesEndRef = useRef<HTMLDivElement>(null);
+  const [evidenceImageUrl, setEvidenceImageUrl] = useState<string | null>(null);
+  const [isLoadingEvidence, setIsLoadingEvidence] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const averageSeverity = useMemo(() => {
     const total = updates.reduce((acc, curr) => acc + curr.severity, 8);
@@ -140,8 +139,70 @@ export default function IncidentFeedPage() {
           data.incident_type ||
           INCIDENT_DEMO.type;
 
-        let locationText = INCIDENT_DEMO.location;
+        // Parse coordinates (may be string or object)
+        let lat: number | null = null;
+        let lng: number | null = null;
         if (data.coordinates) {
+          if (typeof data.coordinates === "string") {
+            try {
+              const parsed = JSON.parse(data.coordinates);
+              lat = parsed.latitude || parsed.lat;
+              lng = parsed.longitude || parsed.lng || parsed.lon;
+            } catch {
+              // If parsing fails, try to extract from string format
+              const coords = data.coordinates.match(/-?\d+\.?\d*/g);
+              if (coords && coords.length >= 2) {
+                lat = parseFloat(coords[0]);
+                lng = parseFloat(coords[1]);
+              }
+            }
+          } else if (typeof data.coordinates === "object") {
+            lat = data.coordinates.latitude || data.coordinates.lat;
+            lng = data.coordinates.longitude || data.coordinates.lng || data.coordinates.lon;
+          }
+        }
+
+        // Fetch address using reverse geocoding with caching
+        let locationText = INCIDENT_DEMO.location;
+        if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+          // Check cache first
+          const cached = getCachedAddress(lat, lng);
+          if (cached) {
+            locationText = cached;
+          } else {
+            try {
+              const geoRes = await fetch(`/api/location?lat=${lat}&lng=${lng}`);
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                if (
+                  geoData?.features &&
+                  Array.isArray(geoData.features) &&
+                  geoData.features.length > 0
+                ) {
+                  const address = geoData.features[0].properties.address_line1;
+                  if (address) {
+                    locationText = address;
+                    setCachedAddress(lat, lng, address);
+                  } else {
+                    // Fallback to coordinates if no address found
+                    locationText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    setCachedAddress(lat, lng, locationText);
+                  }
+                } else {
+                  locationText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                  setCachedAddress(lat, lng, locationText);
+                }
+              } else {
+                locationText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                setCachedAddress(lat, lng, locationText);
+              }
+            } catch (geoErr) {
+              console.error("Error fetching address:", geoErr);
+              locationText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              setCachedAddress(lat, lng, locationText);
+            }
+          }
+        } else if (data.coordinates) {
           locationText = String(data.coordinates);
         }
 
@@ -160,7 +221,8 @@ export default function IncidentFeedPage() {
           location: locationText,
           createdAt,
           authorInitial: INCIDENT_DEMO.authorInitial,
-          author: INCIDENT_DEMO.author,
+          author: data.creator_username || INCIDENT_DEMO.author,
+          evidence_url: data.evidence_url || undefined,
         });
       } catch (err) {
         console.error("Error loading incident details", err);
@@ -169,6 +231,67 @@ export default function IncidentFeedPage() {
 
     loadIncident();
   }, [incidentId]);
+
+  // Fetch presigned URL for evidence image
+  useEffect(() => {
+    const evidenceUrl = incident.evidence_url;
+    if (evidenceUrl && String(evidenceUrl).trim() !== "") {
+      setIsLoadingEvidence(true);
+      const fetchPresignedUrl = async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            setIsLoadingEvidence(false);
+            return;
+          }
+
+          const response = await fetch(
+            `/api/getImageUrl?url=${encodeURIComponent(evidenceUrl)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            setEvidenceImageUrl(data.url);
+          } else {
+            console.error("Failed to get presigned URL for evidence");
+          }
+        } catch (err) {
+          console.error("Error fetching presigned URL for evidence:", err);
+        } finally {
+          setIsLoadingEvidence(false);
+        }
+      };
+
+      fetchPresignedUrl();
+    } else {
+      setEvidenceImageUrl(null);
+    }
+  }, [incident.evidence_url]);
+
+  // Handle ESC key to close image modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isImageModalOpen) {
+        setIsImageModalOpen(false);
+      }
+    };
+
+    if (isImageModalOpen) {
+      document.addEventListener("keydown", handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [isImageModalOpen]);
 
   const handlePost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,20 +312,20 @@ export default function IncidentFeedPage() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#0F0F0F] text-white font-sans flex justify-center`}>
+    <div className="min-h-screen bg-background text-foreground font-sans flex justify-center">
       <div className="w-full max-w-md flex flex-col relative">
         
         {/* HEADER */}
-        <header className="sticky top-0 z-50 bg-[#0F0F0F]/95 backdrop-blur-sm border-b border-white/10">
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-foreground/10">
           <div className="flex items-center justify-between px-4 h-14">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => router.back()}
-                className="p-1 -ml-1 hover:bg-white/10 rounded-full transition-colors"
+                className="p-1 -ml-1 hover:bg-foreground/10 rounded-full transition-colors"
               >
-                <ArrowLeft size={20} className="text-white" />
+                <ArrowLeft size={20} className="text-foreground" />
               </button>
-              <h1 className="text-sm font-medium text-gray-400">Incident Feed</h1>
+              <h1 className="text-xs font-black uppercase tracking-widest text-foreground/40">Incident Feed</h1>
             </div>
             <SeverityGauge average={averageSeverity} />
           </div>
@@ -215,29 +338,54 @@ export default function IncidentFeedPage() {
             {/* Avatar Column */}
             <div className="flex flex-col items-center flex-shrink-0 w-10">
               {/* Parent Avatar: w-10 (40px) */}
-              <div className="w-10 h-10 rounded-full bg-[#3A3A3A] flex items-center justify-center text-base font-bold text-white z-10 ring-4 ring-[#0F0F0F]">
+              <div className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-base font-bold text-foreground z-10 ring-4 ring-background border border-foreground/10">
                 {incident.authorInitial}
               </div>
               {/* Vertical Line Start: 
                   Centered under 40px avatar = 20px. 
                   Width 2px. Left = 20 - 1 = 19px.
               */}
-              <div className="w-[2px] bg-white/10 flex-grow -mt-2 mb-0 min-h-[2rem]" />
+              <div className="w-[2px] bg-foreground/10 flex-grow -mt-2 mb-0 min-h-[2rem]" />
             </div>
 
             {/* Content Column */}
             <div className="flex-1 pb-6">
               <div className="flex items-center gap-2 mb-1">
-                 <span className="text-xs text-gray-500 font-medium">@{incident.author}</span>
-                 <span className="text-[10px] text-gray-500">•</span>
-                 <span className="text-xs text-gray-500">{incident.createdAt}</span>
+                 <span className="text-xs text-foreground/60 font-medium">{incident.author}</span>
+                 <span className="text-[10px] text-foreground/40">•</span>
+                 <span className="text-xs text-foreground/40">{incident.createdAt}</span>
               </div>
               
-              <h2 className="text-lg font-bold leading-tight mb-2 text-white">{incident.title}</h2>
-              <p className="text-sm text-gray-300 leading-relaxed mb-3">{incident.description}</p>
+              <h2 className="text-lg font-bold leading-tight mb-2 text-foreground">{incident.title}</h2>
+              <p className="text-sm text-foreground/60 leading-relaxed mb-3">{incident.description}</p>
               
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-white/5 py-1 px-2 rounded-md w-fit">
-                <MapPin size={12} />
+              {incident.evidence_url && incident.evidence_url.trim() !== "" && (
+                <div className="mt-3 mb-3 rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
+                  {isLoadingEvidence ? (
+                    <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
+                      <span className="text-xs text-foreground/40">Loading image...</span>
+                    </div>
+                  ) : evidenceImageUrl ? (
+                    <img
+                      src={evidenceImageUrl}
+                      alt="Evidence"
+                      className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setIsImageModalOpen(true)}
+                      onError={(e) => {
+                        console.error("Error loading evidence image:", evidenceImageUrl);
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
+                      <span className="text-xs text-foreground/40">Failed to load image</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex items-center gap-1.5 text-xs text-foreground/40 bg-foreground/5 py-1 px-2 rounded-md w-fit border border-foreground/5">
+                <MapPin size={12} className="text-foreground/30" />
                 <span>{incident.location}</span>
               </div>
             </div>
@@ -249,7 +397,7 @@ export default function IncidentFeedPage() {
                 Runs from top of updates container to the very bottom.
                 Position: Left 19px (Aligned with parent avatar center).
             */}
-            <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-white/10 -z-10" />
+            <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-foreground/10 -z-10" />
 
             {updates.map((update, index) => {
               const isLast = index === updates.length - 1;
@@ -262,7 +410,7 @@ export default function IncidentFeedPage() {
                   {/* 1. MASK (Last Item Only) */}
                   {/* Hides the global rail below the curve of the last item */}
                   {isLast && (
-                    <div className="absolute left-[19px] top-[20px] bottom-0 w-[2px] bg-[#0F0F0F] z-0" />
+                    <div className="absolute left-[19px] top-[20px] bottom-0 w-[2px] bg-background z-0" />
                   )}
 
                   {/* 2. THE CURVE CONNECTOR */}
@@ -270,15 +418,11 @@ export default function IncidentFeedPage() {
                       Width: 26px (Reaches from rail at 19px to avatar at ~45px).
                       Rounded Bottom Left: Creates the L-curve.
                   */}
-                  <div className="absolute left-[19px] top-0 h-[20px] w-[26px] border-b-[2px] border-l-[2px] border-white/10 rounded-bl-xl z-0" />
+                  <div className="absolute left-[19px] top-0 h-[20px] w-[26px] border-b-[2px] border-l-[2px] border-foreground/10 rounded-bl-xl z-0" />
 
                   {/* === CHILD AVATAR === */}
-                  {/* Margin Left: 45px. 
-                      19px (rail) + 26px (connector width) = 45px.
-                      This ensures the line touches the avatar edge perfectly.
-                  */}
                   <div className="relative z-10 flex-shrink-0 ml-[45px] mt-[4px]"> 
-                    <div className="w-8 h-8 rounded-full bg-[#2A2A2A] border-2 border-[#0F0F0F] flex items-center justify-center text-xs font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-foreground/5 border-2 border-background flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
                       {update.initial}
                     </div>
                   </div>
@@ -286,18 +430,18 @@ export default function IncidentFeedPage() {
                   {/* === CONTENT === */}
                   <div className="flex-1 ml-3 pt-1">
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-sm font-bold text-white">@{update.author}</span>
-                      <span className="text-xs text-gray-500">{update.timeAgo}</span>
+                      <span className="text-sm font-bold text-foreground">{update.author}</span>
+                      <span className="text-xs text-foreground/40">{update.timeAgo}</span>
                     </div>
                     
-                    <p className="text-sm text-gray-300 leading-relaxed mb-2">
+                    <p className="text-sm text-foreground/60 leading-relaxed mb-2">
                        {update.body}
                     </p>
 
                     {update.hasMedia && update.mediaUrls && (
                       <div className="mt-2 grid gap-2">
                         {update.mediaUrls.map((url, i) => (
-                           <div key={i} className="rounded-lg overflow-hidden border border-white/10">
+                           <div key={i} className="rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
                               <img src={url} alt="Evidence" className="w-full h-auto object-cover max-h-48" />
                            </div>
                         ))}
@@ -313,7 +457,7 @@ export default function IncidentFeedPage() {
         </main>
 
         {/* STICKY FOOTER INPUT */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-[#0F0F0F] border-t border-white/10 flex justify-center">
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background border-t border-foreground/10 flex justify-center">
              <div className="w-full max-w-md">
                 <form onSubmit={handlePost} className="relative flex items-center gap-2">
                     <div className="relative flex-1">
@@ -322,9 +466,9 @@ export default function IncidentFeedPage() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Add a live update..."
-                        className="w-full bg-[#1A1A1A] border border-white/10 rounded-full py-3 px-4 pl-4 pr-10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                        className="w-full bg-foreground/5 border border-foreground/10 rounded-full py-3 px-4 pl-4 pr-10 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-foreground/20 transition-all font-medium"
                         />
-                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white transition-colors">
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-foreground/40 hover:text-foreground transition-colors">
                             <Paperclip size={18} />
                         </button>
                     </div>
@@ -332,7 +476,7 @@ export default function IncidentFeedPage() {
                     <button 
                         type="submit"
                         disabled={!inputValue.trim()}
-                        className="p-3 bg-white text-black rounded-full disabled:opacity-50 disabled:bg-gray-700 disabled:text-gray-500 transition-all flex-shrink-0"
+                        className="p-3 bg-foreground text-background rounded-full disabled:opacity-50 disabled:bg-foreground/10 disabled:text-foreground/40 transition-all flex-shrink-0"
                     >
                         <Send size={18} className="translate-x-0.5" />
                     </button>
@@ -341,6 +485,32 @@ export default function IncidentFeedPage() {
         </div>
 
       </div>
+
+      {/* Image Modal/Lightbox */}
+      {isImageModalOpen && evidenceImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <button
+            onClick={() => setIsImageModalOpen(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+            aria-label="Close image"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div
+            className="relative max-w-full max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={evidenceImageUrl}
+              alt="Evidence - Full size"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

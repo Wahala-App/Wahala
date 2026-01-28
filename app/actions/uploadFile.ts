@@ -1,4 +1,4 @@
-import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "../../lib/server/amazonS3Config";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from 'uuid';
@@ -43,6 +43,40 @@ export async function generatePresignedUploadUrl(
   } catch (error) {
     console.error('Error generating presigned URL:', error);
     throw new Error('Failed to generate presigned URL');
+  }
+}
+
+/**
+ * Generate a presigned URL for viewing/downloading a file from S3
+ * @param fileUrl - The full S3 URL of the file (or just the key)
+ * @param expiresIn - Expiration time in seconds (default: 1 hour)
+ * @returns Presigned URL for accessing the file
+ */
+export async function generatePresignedViewUrl(
+  fileUrl: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  try {
+    // Extract the key from the URL
+    let key: string;
+    try {
+      const url = new URL(fileUrl);
+      key = url.pathname.substring(1); // Remove leading '/'
+    } catch {
+      // If it's not a full URL, assume it's already a key
+      key = fileUrl;
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+
+    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+    return presignedUrl;
+  } catch (error) {
+    console.error('Error generating presigned view URL:', error);
+    throw new Error('Failed to generate presigned view URL');
   }
 }
 

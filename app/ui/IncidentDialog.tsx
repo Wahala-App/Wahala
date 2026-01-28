@@ -7,6 +7,8 @@ import { PillButton, DefaultButton } from "./button";
 import getCurrLocation from "../map/mapUtils"
 import { getToken } from "../actions/auth";
 import { formatInTimeZone, format } from 'date-fns-tz';
+import { MapPin } from "lucide-react";
+import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 
 interface IncidentDialogProps {
   isOpen: boolean;
@@ -54,23 +56,117 @@ export function IncidentDialog({
   const [userName, setUserName] = useState<string>("User");
   const [userInitial, setUserInitial] = useState<string>("U");
 
+  // Address input state
+  const [addressInput, setAddressInput] = useState<string>("");
+  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [addressMode, setAddressMode] = useState<"auto" | "manual">("auto");
+  const [addressError, setAddressError] = useState<string>("");
+
   useEffect(() => {
     if (dialogRef.current) {
       if (isOpen) {
         dialogRef.current.showModal();
         if (!providedLocation) {
           getCurrLocation().then(
-            (currLocation) => setLocation(currLocation)
+            (currLocation) => {
+              setLocation(currLocation);
+              // Fetch address for current location
+              fetchAddressFromCoordinates(currLocation.latitude, currLocation.longitude);
+            }
           );
         } else {
           setLocation(providedLocation);
           console.log("Provided Location", providedLocation, location);
+          // Fetch address for provided location
+          fetchAddressFromCoordinates(providedLocation.latitude, providedLocation.longitude);
         }
       } else {
         dialogRef.current.close();
       }
     }
   }, [isOpen, providedLocation]);
+
+  const fetchAddressFromCoordinates = async (lat: number, lng: number) => {
+    // Check cache first
+    const cached = getCachedAddress(lat, lng);
+    if (cached) {
+      setCurrentAddress(cached);
+      return;
+    }
+
+    setIsLoadingAddress(true);
+    setAddressError("");
+    try {
+      const res = await fetch(`/api/location?lat=${lat}&lng=${lng}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.features && Array.isArray(data.features) && data.features.length > 0) {
+          const address = data.features[0].properties.address_line1;
+          if (address) {
+            setCurrentAddress(address);
+            setCachedAddress(lat, lng, address);
+          } else {
+            setCurrentAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+          }
+        } else {
+          setCurrentAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+      } else {
+        setCurrentAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      }
+    } catch (err) {
+      console.error("Error fetching address:", err);
+      setCurrentAddress(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
+
+  const handleGetCurrentLocation = async () => {
+    setAddressError("");
+    setIsLoadingAddress(true);
+    try {
+      const currLocation = await getCurrLocation();
+      setLocation(currLocation);
+      await fetchAddressFromCoordinates(currLocation.latitude, currLocation.longitude);
+    } catch (err) {
+      console.error("Error getting current location:", err);
+      setAddressError("Failed to get current location");
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
+
+  const handleSearchAddress = async () => {
+    if (!addressInput.trim()) {
+      setAddressError("Please enter an address");
+      return;
+    }
+
+    setAddressError("");
+    setIsLoadingAddress(true);
+    try {
+      const res = await fetch(`/api/location?address=${encodeURIComponent(addressInput.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          setLocation({ latitude: data.latitude, longitude: data.longitude });
+          setCurrentAddress(data.address || addressInput.trim());
+          setAddressError("");
+        } else {
+          setAddressError("Address not found. Please try a different address.");
+        }
+      } else {
+        setAddressError("Failed to find address. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error searching address:", err);
+      setAddressError("Failed to search address. Please try again.");
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
 
   useEffect(() => {
     if (confirmDialogRef.current) {
@@ -334,6 +430,11 @@ useEffect(() => {
     setAreaSize("building");
     setEvidenceFile(null);
     setFileError("");
+    setAddressInput("");
+    setCurrentAddress(null);
+    setAddressError("");
+    setAddressMode("auto");
+    setIsLoadingAddress(false);
     setValidationErrors({
       title: false,
       description: false,
@@ -480,6 +581,114 @@ useEffect(() => {
               />
             </div>
 
+            {/* Location/Address Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location <span className="text-red-500">*</span>
+              </label>
+              
+              {/* Mode Toggle */}
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddressMode("auto");
+                    setAddressError("");
+                  }}
+                  className={`flex-1 px-3 py-2 text-sm rounded-md border ${
+                    addressMode === "auto"
+                      ? "bg-blue-50 border-blue-500 text-blue-700"
+                      : "bg-gray-50 border-gray-300 text-gray-700"
+                  }`}
+                >
+                  Use Current Location
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddressMode("manual");
+                    setAddressError("");
+                  }}
+                  className={`flex-1 px-3 py-2 text-sm rounded-md border ${
+                    addressMode === "manual"
+                      ? "bg-blue-50 border-blue-500 text-blue-700"
+                      : "bg-gray-50 border-gray-300 text-gray-700"
+                  }`}
+                >
+                  Enter Address
+                </button>
+              </div>
+
+              {addressMode === "auto" ? (
+                <div className="space-y-2">
+                  <DefaultButton
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    disabled={isLoadingAddress}
+                    className="w-full"
+                  >
+                    {isLoadingAddress ? "Getting location..." : "Get Current Location"}
+                  </DefaultButton>
+                  {currentAddress && (
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md text-sm text-gray-700">
+                      <MapPin className="h-4 w-4" />
+                      <span>{currentAddress}</span>
+                    </div>
+                  )}
+                  {location && !currentAddress && !isLoadingAddress && (
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md text-sm text-gray-500">
+                      <MapPin className="h-4 w-4" />
+                      <span>
+                        {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={addressInput}
+                      onChange={(e) => {
+                        setAddressInput(e.target.value);
+                        setAddressError("");
+                      }}
+                      placeholder="Enter address (e.g., 123 Main St, Lagos)"
+                      className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearchAddress();
+                        }
+                      }}
+                    />
+                    <PillButton
+                      type="button"
+                      onClick={handleSearchAddress}
+                      disabled={isLoadingAddress || !addressInput.trim()}
+                      className="px-4"
+                    >
+                      {isLoadingAddress ? "Searching..." : "Search"}
+                    </PillButton>
+                  </div>
+                  {currentAddress && (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 rounded-md text-sm text-green-700">
+                      <MapPin className="h-4 w-4" />
+                      <span>{currentAddress}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {addressError && (
+                <p className="text-xs text-red-600 mt-1">⚠️ {addressError}</p>
+              )}
+              {validationErrors.location && (
+                <p className="text-xs text-red-600 mt-1">⚠️ Location is required (retrieving...)</p>
+              )}
+            </div>
+
             <div>
               {fileError && (
                 <p className="text-xs text-red-600 mb-1">⚠️ {fileError}</p>
@@ -501,11 +710,6 @@ useEffect(() => {
               )}
             </div>
 
-            {validationErrors.location && (
-              <div>
-                <p className="text-xs text-red-600">⚠️ Location is required (retrieving...)</p>
-              </div>
-            )}
 
             <div className="flex gap-3 pt-4">
               <DefaultButton

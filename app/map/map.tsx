@@ -39,11 +39,33 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
   }>(FALLBACK_LOCATION);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const recalibrateLocation = () => {
-    mapRef.current?.flyTo({
-      center: [currLocation.longitude, currLocation.latitude],
-      zoom: 15,
-    });
+  const recalibrateLocation = async () => {
+    try {
+      console.log("🔄 Recalibrating location...");
+      // Re-fetch current location to ensure we have the latest
+      const location = await getCurrLocation();
+      console.log("📍 Location fetched:", location);
+      
+      // Check if we got the fallback location
+      if (location.latitude === 32.4173824 && location.longitude === -81.7856512) {
+        console.warn("⚠️ Using fallback location - geolocation may have failed. Check browser permissions.");
+      }
+      
+      setCurrLocation(location);
+      
+      if (mapRef.current) {
+        console.log("🗺️ Flying map to:", [location.longitude, location.latitude]);
+        mapRef.current.flyTo({
+          center: [location.longitude, location.latitude],
+          zoom: 15,
+        });
+        console.log("✅ Map should now be centered on your location");
+      } else {
+        console.error("❌ Map reference is null - map may not be initialized");
+      }
+    } catch (error) {
+      console.error("❌ Error in recalibrateLocation:", error);
+    }
   };
 
   const addCustomMarker = (incident: Incident) => {
@@ -221,7 +243,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
             <div className="z-1 absolute bottom-10 right-10">
             <DefaultButton
                 className="rounded-full px-3 py-3 bg-white dark:invert cursor-pointer"
-                onClick={recalibrateLocation}
+                onClick={() => recalibrateLocation()}
             >
                 <Image
                 src={"/starLogo.svg"}

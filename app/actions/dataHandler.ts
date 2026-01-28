@@ -125,10 +125,30 @@ export async function retrieveLocationPins(idToken: string): Promise<Incident[]>
       return [];
     }
 
+    // Fetch usernames for all unique creator UIDs
+    const creatorUids = [...new Set(data.map((pin: any) => pin.creator_uid).filter(Boolean))];
+    const usernameMap: Record<string, string> = {};
+
+    if (creatorUids.length > 0) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('uid, user_name')
+        .in('uid', creatorUids);
+
+      if (!userError && userData) {
+        userData.forEach((user: any) => {
+          if (user.user_name) {
+            usernameMap[user.uid] = user.user_name;
+          }
+        });
+      }
+    }
+
     // Map database rows to Incident type
     const pinData = data.map(pinDoc => ({
       id: pinDoc.id,
       ...pinDoc,
+      creator_username: pinDoc.creator_uid ? usernameMap[pinDoc.creator_uid] : undefined,
     } as Incident));
 
     //console.log("pinData:", pinData);
@@ -164,9 +184,24 @@ export async function retrieveLocationPinById(
       return null;
     }
 
+    // Fetch username for the creator
+    let creatorUsername: string | undefined = undefined;
+    if (data.creator_uid) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_name')
+        .eq('uid', data.creator_uid)
+        .maybeSingle();
+
+      if (!userError && userData?.user_name) {
+        creatorUsername = userData.user_name;
+      }
+    }
+
     const pinData = {
       id: data.id,
       ...data,
+      creator_username: creatorUsername,
     } as Incident;
 
     return pinData;

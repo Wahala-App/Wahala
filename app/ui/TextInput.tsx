@@ -22,7 +22,7 @@ export function TitledTextInput(props: TextInputProps) {
           <Image src={iconURL} alt={"Login Text Logo"} width={20} height={20} />
         </span>
         <input
-          className="rounded-full shadow-md pl-10 pr-4 py-2 border border-gray-200 hover:bg-hover focus:outline-none focus:ring-2 focus:ring-foreground w-full"
+          className="rounded-full shadow-md pl-10 pr-4 py-2 border border-gray-200 hover:bg-hover focus:outline-none focus:ring-2 focus:ring-foreground w-full text-foreground bg-background placeholder:text-foreground/40"
           id={props.title}
           type={props.type}
           placeholder={props.placeholder}
@@ -39,7 +39,7 @@ export function TextInput(props: TextInputProps) {
   return (
     <div className={clsx(props.className, "mb-8")}>
       <input
-        className="rounded-full shadow-md pl-10 pr-4 py-2 border border-gray-200 hover:bg-hover focus:outline-none focus:ring-2 focus:ring-foreground w-full"
+        className="rounded-full shadow-md pl-10 pr-4 py-2 border border-gray-200 hover:bg-hover focus:outline-none focus:ring-2 focus:ring-foreground w-full text-foreground bg-background placeholder:text-foreground/40"
         id={props.placeholder}
         type={props.type}
         placeholder={props.placeholder}

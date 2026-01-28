@@ -7,6 +7,12 @@ export interface Incident {
   coordinates: Location;
   // Stored as string in Supabase, but treated as 1–10 scale
   severity?: number | string;
+  // Username of the incident creator
+  creator_username?: string;
+  // S3 URL of uploaded evidence file
+  evidence_url?: string;
+  // Number of live updates
+  update_count?: number;
 }
 
 export enum IncidentType {

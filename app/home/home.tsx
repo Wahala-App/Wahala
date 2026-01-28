@@ -14,6 +14,9 @@ import BottomNav, { BottomNavTab } from "../ui/BottomNav";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import IncidentDetailsPopover from "@/app/ui/IncidentDetailsPopover";
+import { typeOf, typeColor, getHighlights, getRecentAlerts, getTrends } from "../utils/incidentUtils";
+import getCurrLocation from "../map/mapUtils";
+import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -127,8 +130,62 @@ export default function HomeComponent() {
   }, [refreshCount, fetchLocationPins]);
 
 
-  const handleRecalibrate = () => {
-    mapRef.current?.recalibrateLocation();
+  // Fetch and update user location with address
+  const fetchAndUpdateLocation = useCallback(async () => {
+    try {
+      // Get current location coordinates
+      const location = await getCurrLocation();
+      
+      // Check cache first
+      let address: string | null = getCachedAddress(location.latitude, location.longitude);
+      
+      if (!address) {
+        // Fetch address from reverse geocoding API
+        const geoRes = await fetch(`/api/location?lat=${location.latitude}&lng=${location.longitude}`);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (
+            geoData?.features &&
+            Array.isArray(geoData.features) &&
+            geoData.features.length > 0
+          ) {
+            address = geoData.features[0].properties.address_line1 || 
+                     `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+          } else {
+            address = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+          }
+        } else {
+          address = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+        }
+        
+        // Cache the address (address is guaranteed to be a string here after the if block)
+        setCachedAddress(location.latitude, location.longitude, address as string);
+      }
+      
+      // Ensure address is a string
+      const finalAddress = address || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+      
+      // Store in localStorage
+      localStorage.setItem("userLocation", JSON.stringify(finalAddress));
+      setHomeLocation(finalAddress);
+      
+      // Update map location
+      if (mapRef.current) {
+        mapRef.current.recalibrateLocation();
+      }
+      
+      return finalAddress;
+    } catch (error) {
+      console.error("Error fetching location:", error);
+      // Return fallback address on error
+      const fallback = "Location unavailable";
+      setHomeLocation(fallback);
+      return fallback;
+    }
+  }, []);
+
+  const handleRecalibrate = async () => {
+    await fetchAndUpdateLocation();
   };
 
   const handlePinAddition = (lat: number, lon: number) => {
@@ -234,18 +291,35 @@ export default function HomeComponent() {
   const [homeEmail, setHomeEmail] = useState("");
   const [storageUsage, setStorageUsage] = useState<{ used: number; quota: number } | null>(null);
   const [themeChoice, setThemeChoice] = useState<"light" | "system" | "dark">("system");
+  
+  // Load user info from localStorage on mount
   useEffect(() => {
     try {
       const n = localStorage.getItem("userName");
       if (n) setHomeUserName(n);
       const l = localStorage.getItem("userLocation");
-      if (l) setHomeLocation(JSON.parse(l));
+      if (l) {
+        try {
+          setHomeLocation(JSON.parse(l));
+        } catch {
+          setHomeLocation(l);
+        }
+      }
       const e = auth.currentUser?.email;
       if (e) setHomeEmail(e);
     } catch {
       // ignore
     }
   }, []);
+
+  // Fetch and set user location on mount if not already stored
+  useEffect(() => {
+    const storedLocation = localStorage.getItem("userLocation");
+    if (!storedLocation) {
+      // Only fetch if we don't have a stored location
+      fetchAndUpdateLocation();
+    }
+  }, [fetchAndUpdateLocation]);
 
   useEffect(() => {
     const loadStorage = async () => {
@@ -282,8 +356,7 @@ export default function HomeComponent() {
   return (
     <div className="h-screen md:pb-0 pb-16">
       <div className="flex h-full">
-        {/* Desktop left panel */}
-        <div className="hidden md:flex flex-[0.2] flex-col items-center justify-center w-9/10">
+        <div className="hidden md:flex flex-[0.25] flex-col min-w-[350px] lg:min-w-[400px]">
           <SearchAndAdd
             addRef = {addRef}
             addCustomMarker={ (incident: Incident) => {mapRef.current?.addCustomMarker(incident)}}
@@ -293,6 +366,11 @@ export default function HomeComponent() {
             // Pass dialog handlers to QuickAdd
             openDialog={() => setIsDialogOpen(true)}
             setDialogLocation={setDialogLocation}
+            userName={homeUserName}
+            userLocation={homeLocation}
+            pins={pins}
+            onOpenDetails={setSelectedIncidentId}
+            onCreateReport={handleCreateReport}
           />
         </div>
         {/* Map area */}
@@ -307,8 +385,10 @@ export default function HomeComponent() {
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval
                 recalibrate={handleRecalibrate}
-                isDetailsOpened={isUserMenuOpen}
-                setIsDetailsOpened={setIsUserMenuOpen}
+                userName={homeUserName}
+                email={homeEmail}
+                alertCount={pins.length} // Example: using pin count as alerts for now
+                userLocation={homeLocation}
               />
             </div>
           </Suspense>
@@ -388,7 +468,7 @@ export default function HomeComponent() {
       {selectedIncident && (
         <>
           {/* Desktop / tablet popover */}
-          <div className="hidden md:block fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[420px] max-w-[90vw]">
+          <div className="hidden md:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 w-[420px] max-w-[90vw]">
             <IncidentDetailsPopover
               incident={selectedIncident}
               onClose={() => setSelectedIncidentId(null)}
@@ -575,62 +655,6 @@ function HomeOverlayFlutter({
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const typeOf = (inc: Incident) =>
-    ((inc.incidentType || inc.incident_type || "Other") as string) || "Other";
-
-  const typeColor = (t: string) => {
-    const k = t.toLowerCase();
-    if (k.includes("robbery")) return "#ef4444";
-    if (k.includes("assault")) return "#f97316";
-    if (k.includes("theft")) return "#3b82f6";
-    if (k.includes("vandal")) return "#a855f7";
-    if (k.includes("drug")) return "#22c55e";
-    if (k.includes("intox")) return "#eab308";
-    return "#64748b";
-  };
-
-  const getHighlights = (all: Incident[]) => all.slice(0, 3);
-
-  const getRecentAlerts = (all: Incident[]) => all.slice(0, 3);
-
-  const getTrends = (all: Incident[]) => {
-    const counts = all.reduce<Record<string, { count: number; first: Incident }>>(
-      (acc, inc) => {
-        const t = typeOf(inc);
-        if (!acc[t]) acc[t] = { count: 0, first: inc };
-        acc[t].count += 1;
-        return acc;
-      },
-      {}
-    );
-
-    const sorted = Object.entries(counts).sort((a, b) => b[1].count - a[1].count);
-    const trending = sorted
-      .filter(([, v]) => v.count >= 3)
-      .slice(0, 2)
-      .map(([t, v]) => ({
-        id: `trend-${t}`,
-        title: `${t} trend at ${userLocation || "your area"}`,
-        summary: `${v.count} reports • Recent`,
-        primaryIncidentId: v.first.id,
-        type: t,
-      }));
-
-    if (trending.length > 0) return trending;
-
-    // Fallback: show latest 2 incidents
-    return all.slice(0, 2).map((inc) => {
-      const t = typeOf(inc);
-      return {
-        id: inc.id,
-        title: inc.title,
-        summary: `${userLocation || "Nearby"} • Recent`,
-        primaryIncidentId: inc.id,
-        type: t,
-      };
-    });
-  };
-
   const buildCard = ({
     title,
     subtitle,
@@ -680,7 +704,7 @@ function HomeOverlayFlutter({
           .slice(0, 20);
 
   const highlights = getHighlights(pins);
-  const trends = getTrends(pins);
+  const trends = getTrends(pins, userLocation);
   const recentAlerts = getRecentAlerts(pins);
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -980,17 +1004,6 @@ function AlertsOverlay({
       else next.add(t);
       return next;
     });
-  };
-
-  const typeColor = (t: string) => {
-    // Rough mapping to match Flutter’s “iconColor” feel
-    if (t.toLowerCase().includes("robbery")) return "#ef4444";
-    if (t.toLowerCase().includes("assault")) return "#f97316";
-    if (t.toLowerCase().includes("theft")) return "#3b82f6";
-    if (t.toLowerCase().includes("vandal")) return "#a855f7";
-    if (t.toLowerCase().includes("drug")) return "#22c55e";
-    if (t.toLowerCase().includes("intox")) return "#eab308";
-    return "#64748b";
   };
 
   return (
