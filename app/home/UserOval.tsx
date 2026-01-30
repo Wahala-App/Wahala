@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Shield, ChevronDown, LogOut, MapPin, User as UserIcon } from "lucide-react";
 import clsx from "clsx";
+import { useTheme } from "@/src/contexts/ThemeContext";
 
 interface UserOvalProps {
   recalibrate: () => void;
@@ -22,6 +23,7 @@ export const UserOval = ({
   userLocation,
 }: UserOvalProps) => {
   const router = useRouter();
+  const { themeChoice, setThemeChoice } = useTheme();
   const [isDetailsOpened, setIsDetailsOpened] = useState(false);
   const [address, setAddress] = useState("");
   
@@ -143,6 +145,32 @@ export const UserOval = ({
                 >
                   Recalibrate
                 </button>
+              </div>
+            </div>
+
+            {/* Theme Section */}
+            <div className="px-2 mb-2">
+              <div className="p-4 bg-foreground/5 rounded-2xl border border-foreground/5">
+                <div className="text-[10px] font-black uppercase tracking-widest text-foreground/80 mb-2">
+                  Theme
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["light", "dark", "system"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setThemeChoice(opt)}
+                      className={clsx(
+                        "h-9 rounded-xl border text-[11px] font-bold transition-colors",
+                        themeChoice === opt
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-background text-foreground border-foreground/10 hover:bg-foreground/5"
+                      )}
+                    >
+                      {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

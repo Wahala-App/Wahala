@@ -54,21 +54,25 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         let lat: number | null = null;
         let lng: number | null = null;
 
-        if (typeof incident.coordinates === "string") {
+        // NOTE: Supabase may return coordinates as a string; our Incident type uses Location.
+        // Treat as unknown here to support both.
+        const coordsRaw: any = incident.coordinates as any;
+
+        if (typeof coordsRaw === "string") {
           try {
-            const parsed = JSON.parse(incident.coordinates);
+            const parsed = JSON.parse(coordsRaw);
             lat = parsed.latitude || parsed.lat;
             lng = parsed.longitude || parsed.lng || parsed.lon;
           } catch {
-            const coords = incident.coordinates.match(/-?\d+\.?\d*/g);
+            const coords = coordsRaw.match(/-?\d+\.?\d*/g);
             if (coords && coords.length >= 2) {
               lat = parseFloat(coords[0]);
               lng = parseFloat(coords[1]);
             }
           }
-        } else if (typeof incident.coordinates === "object") {
-          lat = incident.coordinates.latitude || incident.coordinates.lat;
-          lng = incident.coordinates.longitude || incident.coordinates.lng || incident.coordinates.lon;
+        } else if (coordsRaw && typeof coordsRaw === "object") {
+          lat = coordsRaw.latitude || coordsRaw.lat;
+          lng = coordsRaw.longitude || coordsRaw.lng || coordsRaw.lon;
         }
 
         if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
@@ -191,17 +195,17 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
   }, [isImageModalOpen]);
 
   return (
-    <div className="w-full rounded-2xl bg-white text-gray-900 shadow-xl border border-gray-200 dark:bg-neutral-900 dark:text-white dark:border-neutral-700">
+    <div className="w-full rounded-2xl bg-background text-foreground shadow-xl border border-foreground/10">
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="inline-flex h-6 items-center rounded-full bg-gray-100 px-2.5 text-[11px] font-semibold text-gray-700 dark:bg-neutral-800 dark:text-gray-100">
+          <span className="inline-flex h-6 items-center rounded-full bg-foreground/5 px-2.5 text-[11px] font-semibold text-foreground/80">
             {type}
           </span>
-          <h2 className="mt-1 text-sm sm:text-base font-semibold text-gray-900 dark:text-white line-clamp-2">
+          <h2 className="mt-1 text-sm sm:text-base font-semibold text-foreground line-clamp-2">
             {incident.title}
           </h2>
           {incident.creator_username && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-foreground/60 mt-0.5">
               {incident.creator_username}
             </p>
           )}
@@ -209,7 +213,7 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="ml-3 rounded-full p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-gray-200 dark:hover:bg-neutral-800"
+          className="ml-3 rounded-full p-1.5 text-foreground/40 hover:text-foreground hover:bg-foreground/5"
           aria-label="Close incident details"
         >
           <X className="h-4 w-4" />
@@ -217,16 +221,16 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
       </div>
 
       {incident.description && (
-        <p className="px-4 pb-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
+        <p className="px-4 pb-2 text-xs sm:text-sm text-foreground/70 line-clamp-3">
           {incident.description}
         </p>
       )}
 
       {((incident as any).evidence_url && String((incident as any).evidence_url).trim() !== "") && (
-        <div className="mx-4 mb-3 rounded-lg overflow-hidden border border-gray-200 dark:border-neutral-700">
+        <div className="mx-4 mb-3 rounded-lg overflow-hidden border border-foreground/10">
           {isLoadingEvidence ? (
-            <div className="w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-neutral-800">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Loading image...</span>
+            <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
+              <span className="text-xs text-foreground/60">Loading image...</span>
             </div>
           ) : evidenceImageUrl ? (
             <img
@@ -240,8 +244,8 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
               }}
             />
           ) : (
-            <div className="w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-neutral-800">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Failed to load image</span>
+            <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
+              <span className="text-xs text-foreground/60">Failed to load image</span>
             </div>
           )}
         </div>
@@ -274,7 +278,7 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
       )}
 
       {hasCoords && (
-        <div className="px-4 pb-3 flex items-center gap-2 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+        <div className="px-4 pb-3 flex items-center gap-2 text-[11px] sm:text-xs text-foreground/60">
           <MapPin className="h-3 w-3" />
           <span>
             {isLoadingAddress
@@ -291,9 +295,9 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
       )}
 
       {/* Severity + live update bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 text-[11px] sm:text-xs bg-white dark:bg-neutral-900 dark:border-neutral-800">
+      <div className="flex items-center justify-between px-4 py-2 border-t border-foreground/10 text-[11px] sm:text-xs bg-background">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-gray-500 dark:text-gray-400 truncate">
+          <span className="text-foreground/60 truncate">
             Severity
           </span>
           {severityInfo && numericSeverity !== null ? (
@@ -303,7 +307,7 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
               {severityInfo.label} · {numericSeverity.toFixed(1)}/10
             </span>
           ) : (
-            <span className="text-gray-400 dark:text-gray-500 text-[10px]">
+            <span className="text-foreground/40 text-[10px]">
               Not specified
             </span>
           )}
@@ -315,11 +319,11 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-gray-100 bg-gray-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+      <div className="flex gap-2 border-t border-foreground/10 bg-background px-4 py-3">
         <DefaultButton
           type="button"
           onClick={onClose}
-          className="flex-1 h-9 rounded-full text-xs sm:text-sm border border-gray-300 dark:border-neutral-700"
+          className="flex-1 h-9 rounded-full text-xs sm:text-sm border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors"
         >
           Close
         </DefaultButton>

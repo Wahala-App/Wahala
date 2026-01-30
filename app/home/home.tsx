@@ -17,9 +17,11 @@ import IncidentDetailsPopover from "@/app/ui/IncidentDetailsPopover";
 import { typeOf, typeColor, getHighlights, getRecentAlerts, getTrends } from "../utils/incidentUtils";
 import getCurrLocation from "../map/mapUtils";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
+import { useTheme } from "@/src/contexts/ThemeContext";
 
 export default function HomeComponent() {
   const router = useRouter();
+  const { themeChoice, setThemeChoice } = useTheme();
   
   const mapRef = useRef<{
     recalibrateLocation: () => void;
@@ -290,7 +292,6 @@ export default function HomeComponent() {
   const [homeLocation, setHomeLocation] = useState("");
   const [homeEmail, setHomeEmail] = useState("");
   const [storageUsage, setStorageUsage] = useState<{ used: number; quota: number } | null>(null);
-  const [themeChoice, setThemeChoice] = useState<"light" | "system" | "dark">("system");
   
   // Load user info from localStorage on mount
   useEffect(() => {
@@ -457,8 +458,6 @@ export default function HomeComponent() {
               storageUsedLabel={
                 storageUsage ? formatBytes(storageUsage.used) : "—"
               }
-              themeChoice={themeChoice}
-              setThemeChoice={setThemeChoice}
             />
           </div>
         </div>
@@ -1167,8 +1166,6 @@ function ProfileOverlay({
   onRecalibrate,
   offlineMapsCount,
   storageUsedLabel,
-  themeChoice,
-  setThemeChoice,
 }: {
   name: string;
   email: string;
@@ -1177,9 +1174,8 @@ function ProfileOverlay({
   onRecalibrate: () => void;
   offlineMapsCount: number;
   storageUsedLabel: string;
-  themeChoice: "light" | "system" | "dark";
-  setThemeChoice: (v: "light" | "system" | "dark") => void;
 }) {
+  const { themeChoice, setThemeChoice } = useTheme();
   const initial = (name?.trim()?.[0] ?? "U").toUpperCase();
 
   const SectionHeader = ({ children }: { children: React.ReactNode }) => (
@@ -1268,6 +1264,34 @@ function ProfileOverlay({
         <Item label="Personal Information" onClick={() => {}} />
         <Divider />
         <Item label="Notifications" onClick={() => {}} />
+      </Card>
+
+      {/* Appearance */}
+      <SectionHeader>APPEARANCE</SectionHeader>
+      <Card>
+        <div className="px-4 py-4">
+          <div className="text-base font-medium text-foreground mb-3">Theme</div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["light", "dark", "system"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setThemeChoice(opt)}
+                className={clsx(
+                  "h-11 rounded-xl border text-sm font-semibold transition-colors",
+                  themeChoice === opt
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-background text-foreground border-foreground/10 hover:bg-foreground/5"
+                )}
+              >
+                {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 text-xs text-foreground/60">
+            System follows your device appearance.
+          </div>
+        </div>
       </Card>
 
     
