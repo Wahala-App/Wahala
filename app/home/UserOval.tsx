@@ -13,6 +13,7 @@ interface UserOvalProps {
   email: string;
   alertCount?: number;
   userLocation?: string;
+  onOpenAlerts?: () => void;
 }
 
 export const UserOval = ({
@@ -21,6 +22,7 @@ export const UserOval = ({
   email,
   alertCount = 0,
   userLocation,
+  onOpenAlerts,
 }: UserOvalProps) => {
   const router = useRouter();
   const { themeChoice, setThemeChoice } = useTheme();
@@ -59,6 +61,7 @@ export const UserOval = ({
         <button 
           className="relative w-10 h-10 rounded-full bg-background border border-foreground/10 flex items-center justify-center hover:bg-foreground/5 transition-all shadow-lg text-foreground"
           aria-label="Alerts"
+          onClick={onOpenAlerts}
         >
           <Bell className="w-5 h-5" />
           {alertCount > 0 && (

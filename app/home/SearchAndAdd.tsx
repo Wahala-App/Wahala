@@ -6,6 +6,8 @@ import { getToken } from "@/app/actions/auth";
 import { typeOf, typeColor, getHighlights, getTrends, getRecentAlerts } from "../utils/incidentUtils";
 import clsx from "clsx";
 
+type SearchAndAddTab = "home" | "reports" | "alerts";
+
 interface SearchAndAddProps {
   addCustomMarker: (incident: Incident) => void;
   onIncidentChanged: () => void;
@@ -19,6 +21,8 @@ interface SearchAndAddProps {
   pins: Incident[];
   onOpenDetails: (incidentId: string) => void;
   onCreateReport: () => void;
+  activeTab?: SearchAndAddTab;
+  onTabChange?: (tab: SearchAndAddTab) => void;
 }
 
 export default function SearchAndAdd(
@@ -35,9 +39,16 @@ export default function SearchAndAdd(
     pins,
     onOpenDetails,
     onCreateReport,
+    activeTab: controlledTab,
+    onTabChange,
   }: SearchAndAddProps
 ) {
-  const [activeTab, setActiveTab] = useState<"home" | "reports" | "alerts">("home");
+  const [uncontrolledTab, setUncontrolledTab] = useState<SearchAndAddTab>("home");
+  const activeTab: SearchAndAddTab = controlledTab ?? uncontrolledTab;
+  const setActiveTab = (tab: SearchAndAddTab) => {
+    if (onTabChange) onTabChange(tab);
+    if (controlledTab === undefined) setUncontrolledTab(tab);
+  };
 
   useEffect(() => {
     const timer = setTimeout(async () => {

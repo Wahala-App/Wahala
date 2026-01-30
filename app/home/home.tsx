@@ -40,13 +40,72 @@ export default function HomeComponent() {
   // Mobile bottom-nav state
   const [activeTab, setActiveTab] = useState<BottomNavTab>("home");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [desktopSidebarTab, setDesktopSidebarTab] = useState<"home" | "reports" | "alerts">("home");
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   
   // ADD: Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogLocation, setDialogLocation] = useState<Location | null>(null);
   const [selectedIncidentType] = useState<IncidentType>(IncidentType.NONE);
 
+  const [pins, setPins] = useState<Incident[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const triggerRefresh = () => setRefreshCount((prev) => prev + 1);
+
+  const ALERTS_LAST_SEEN_AT_KEY = "alerts.lastSeenAt";
+  const ALERTS_LAST_SEEN_UPDATE_COUNTS_KEY = "alerts.lastSeenUpdateCounts";
+
+  const computeUnreadAlerts = useCallback((allPins: Incident[]) => {
+    try {
+      const lastSeenAtRaw = localStorage.getItem(ALERTS_LAST_SEEN_AT_KEY);
+      const lastSeenAt = lastSeenAtRaw ? parseInt(lastSeenAtRaw, 10) : 0;
+      const lastSeenCountsRaw = localStorage.getItem(ALERTS_LAST_SEEN_UPDATE_COUNTS_KEY);
+      const lastSeenCounts: Record<string, number> = lastSeenCountsRaw ? JSON.parse(lastSeenCountsRaw) : {};
+
+      let newIncidents = 0;
+      let updateDeltas = 0;
+
+      for (const p of allPins) {
+        const createdTs =
+          (p as any).added_on ? Date.parse((p as any).added_on) :
+          (p as any).date_time ? Date.parse((p as any).date_time) :
+          NaN;
+        if (!Number.isNaN(createdTs) && createdTs > lastSeenAt) newIncidents += 1;
+
+        const currentCount = typeof p.update_count === "number" ? p.update_count : 0;
+        const prevCount = typeof lastSeenCounts[p.id] === "number" ? lastSeenCounts[p.id] : 0;
+        if (currentCount > prevCount) updateDeltas += (currentCount - prevCount);
+      }
+
+      return newIncidents + updateDeltas;
+    } catch {
+      return 0;
+    }
+  }, []);
+
+  const markAlertsSeen = useCallback((allPins: Incident[]) => {
+    try {
+      const now = Date.now();
+      localStorage.setItem(ALERTS_LAST_SEEN_AT_KEY, String(now));
+      const counts: Record<string, number> = {};
+      for (const p of allPins) {
+        counts[p.id] = typeof p.update_count === "number" ? p.update_count : 0;
+      }
+      localStorage.setItem(ALERTS_LAST_SEEN_UPDATE_COUNTS_KEY, JSON.stringify(counts));
+    } catch {
+      // ignore
+    }
+    setUnreadAlertsCount(0);
+  }, []);
+
+  const handleOpenAlerts = useCallback(() => {
+    // Desktop: switch sidebar; Mobile: switch overlay
+    setDesktopSidebarTab("alerts");
+    setActiveTab("alerts");
+    markAlertsSeen(pins);
+  }, [markAlertsSeen, pins]);
 
    const fetchLocationPins = useCallback ( async () => {
         try {
@@ -79,10 +138,6 @@ export default function HomeComponent() {
         }
       }, []);
   
-  const [pins, setPins] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const selectedIncident = useMemo(
     () => pins.find((pin) => pin.id === selectedIncidentId) ?? null,
     [pins, selectedIncidentId]
@@ -130,6 +185,11 @@ export default function HomeComponent() {
       supabase.removeChannel(channel);
     };
   }, [refreshCount, fetchLocationPins]);
+
+  // Recompute unread alerts whenever pins change
+  useEffect(() => {
+    setUnreadAlertsCount(computeUnreadAlerts(pins));
+  }, [pins, computeUnreadAlerts]);
 
 
   // Fetch and update user location with address
@@ -250,6 +310,20 @@ export default function HomeComponent() {
     setIsUserMenuOpen(false);
     setActiveTab(tab);
   };
+
+  // Mark as read when user views alerts (mobile)
+  useEffect(() => {
+    if (activeTab === "alerts") {
+      markAlertsSeen(pins);
+    }
+  }, [activeTab, markAlertsSeen, pins]);
+
+  // Mark as read when user views alerts (desktop sidebar)
+  useEffect(() => {
+    if (desktopSidebarTab === "alerts") {
+      markAlertsSeen(pins);
+    }
+  }, [desktopSidebarTab, markAlertsSeen, pins]);
 
   const handleMarkerPrimaryClick = (incidentId: string) => {
     setSelectedIncidentId((prev) => (prev === incidentId ? null : incidentId));
@@ -372,6 +446,8 @@ export default function HomeComponent() {
             pins={pins}
             onOpenDetails={setSelectedIncidentId}
             onCreateReport={handleCreateReport}
+            activeTab={desktopSidebarTab}
+            onTabChange={setDesktopSidebarTab}
           />
         </div>
         {/* Map area */}
@@ -388,8 +464,9 @@ export default function HomeComponent() {
                 recalibrate={handleRecalibrate}
                 userName={homeUserName}
                 email={homeEmail}
-                alertCount={pins.length} // Example: using pin count as alerts for now
+                alertCount={unreadAlertsCount}
                 userLocation={homeLocation}
+                onOpenAlerts={handleOpenAlerts}
               />
             </div>
           </Suspense>
@@ -406,7 +483,7 @@ export default function HomeComponent() {
             onOpenProfile={() => setActiveTab("profile")}
             onCreateReport={handleCreateReport}
             onOpenReports={handleOpenReportTab}
-            onOpenAlerts={() => setActiveTab("alerts")}
+            onOpenAlerts={handleOpenAlerts}
             onOpenMap={() => setActiveTab("map")}
             onOpenDetails={(incidentId) => {
               setSelectedIncidentId(incidentId);
