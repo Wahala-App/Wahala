@@ -2,6 +2,7 @@
 
 import React, {Suspense, useEffect, useRef, useCallback, useState, useMemo} from "react";
 import clsx from "clsx";
+import Image from "next/image";
 import SearchAndAdd from "./SearchAndAdd";
 import Loading from "./Loading";
 import MapComponent from "../map/map";
@@ -789,13 +790,16 @@ function HomeOverlayFlutter({
 
   const Header = () => (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center">
-          <span className="text-xl font-extrabold" style={{ fontFamily: "serif" }}>
-            i
-          </span>
-        </div>
-        <div className="text-2xl font-extrabold tracking-tight">WAHALA</div>
+      <div className="flex items-center gap-2">
+        <Image
+          src="/logo/wahala%20logo5.png"
+          alt="Wahala logo"
+          width={64}
+          height={64}
+          priority
+          className="h-16 w-auto object-contain translate-y-[3px]"
+        />
+        <div className="text-2xl font-black tracking-tighter leading-none text-foreground">WAHALA</div>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -1119,7 +1123,17 @@ function AlertsOverlay({
               >
                 <span className="text-lg">⌕</span>
               </button>
-              <div className="text-xl font-extrabold tracking-tight">Wahala</div>
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/logo/wahala%20logo5.png"
+                  alt="Wahala logo"
+                  width={48}
+                  height={48}
+                  priority
+                  className="h-12 w-auto object-contain"
+                />
+                <div className="text-xl font-black tracking-tighter text-foreground">WAHALA</div>
+              </div>
               <button
                 type="button"
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center"

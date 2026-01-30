@@ -27,6 +27,7 @@ A complete live updates system that allows users to post real-time updates on in
   - Updates older than 24 hours: 10% weight
 - **Real-time Updates**: Updates are fetched from database and displayed in chronological order
 - **Update Counter**: Shows number of live updates on incident cards and popovers
+- **Updates API**: Dedicated endpoint for posting/fetching live updates (`/api/updates`)
 
 #### Database:
 - New `incident_updates` table stores all update data
@@ -94,7 +95,26 @@ Enhanced evidence image viewing with secure presigned URLs and fullscreen modal.
 
 ---
 
-### 4. Desktop UI Redesign
+### 4. Theme Toggle (Light / Dark / System)
+**Location**: `app/globals.css`, `app/layout.tsx`, `src/contexts/ThemeContext.tsx`, `app/home/home.tsx`, `app/home/UserOval.tsx`
+
+Added an app-wide theme system that matches mobile behavior and supports Light/Dark/System.
+
+#### Features:
+- **App-wide theming**: Uses CSS variables already powering `bg-background` / `text-foreground`
+- **Three modes**:
+  - Light
+  - Dark
+  - System (follows device theme)
+- **Persistence**: saves selection in `localStorage` (`themeChoice`)
+- **No flash on load**: pre-hydration script applies the saved theme before React renders
+- **UI access points**:
+  - Mobile Profile screen (`ProfileOverlay`)
+  - Desktop profile dropdown (`UserOval`)
+
+---
+
+### 5. Desktop UI Redesign
 **Location**: `app/home/SearchAndAdd.tsx`, `app/home/UserOval.tsx`, `app/ui/IncidentDisplay.tsx`
 
 Complete redesign of desktop sidebar and navigation to match mobile-first design.
@@ -106,7 +126,7 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
   - **Alerts Tab**: List of recent alerts with modern card styling
 - **Top Navigation Bar**:
   - User profile pill with avatar, name, and reputation status
-  - Alerts bell with notification count badge
+  - Alerts bell with notification badge (now wired to open Alerts)
   - Enhanced dropdown menu with:
     - User information section
     - Reputation display with shield icons
@@ -124,17 +144,43 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
 
 ---
 
-### 5. UI/UX Improvements
+### 6. UI/UX Improvements
 
 #### Text Contrast Fixes
 - Improved text contrast in profile dropdown
 - Better readability in dark mode
 - Updated opacity values for labels and secondary text
 
+#### Theme Toggle (Light / Dark / System)
+**Location**: `app/globals.css`, `app/layout.tsx`, `src/contexts/ThemeContext.tsx`, `app/home/home.tsx`, `app/home/UserOval.tsx`
+
+- Added **Light / Dark / System** theme selection (like mobile)
+- Theme applies **app-wide** using CSS variables (`bg-background`, `text-foreground`)
+- Persists user choice in `localStorage` (`themeChoice`)
+- Applies saved theme before React renders (pre-hydration script) to avoid “flash”
+- UI toggles available in:
+  - Mobile **Profile** screen (`ProfileOverlay`)
+  - Desktop **User** dropdown (`UserOval`)
+
 #### Incident Details Popover
 - Added live update counter with pulsing eye icon
 - Better positioning on desktop (centered)
 - Consistent styling with rest of application
+
+#### Alerts Bell (Option A / MVP)
+**Location**: `app/home/home.tsx`, `app/home/UserOval.tsx`, `app/home/SearchAndAdd.tsx`
+
+- **Click behavior**:
+  - Desktop: switches the sidebar (`SearchAndAdd`) to the **Alerts** tab
+  - Mobile: navigates to the **Alerts** overlay/tab
+- **Unread badge**:
+  - Stored per-device in `localStorage`
+  - Unread = new incidents since last seen + `update_count` deltas since last seen
+  - Viewing Alerts marks them as read
+
+#### Light Mode Popover Button Visibility
+- Fixed “View full report” button disappearing in **Light mode**
+- Updated `IncidentDetailsPopover` styling to use theme tokens (`bg-background`, `text-foreground`) instead of mixed `bg-white` + `dark:*` classes
 
 #### Severity Indicator
 - Pill-style severity indicator matching report popup design
@@ -189,11 +235,11 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
 ## 🔄 Modified Files
 
 1. `app/incident/[id]/page.tsx` - Complete live updates implementation
-2. `app/home/home.tsx` - Location fetching and recalibration
-3. `app/home/UserOval.tsx` - Enhanced profile dropdown with location
+2. `app/home/home.tsx` - Location fetching, recalibration, and Alerts bell behavior
+3. `app/home/UserOval.tsx` - Enhanced profile dropdown with location + theme toggle + alerts click
 4. `app/home/SearchAndAdd.tsx` - Tabbed sidebar interface
 5. `app/ui/IncidentDisplay.tsx` - Modern card design with live updates counter
-6. `app/ui/IncidentDetailsPopover.tsx` - Evidence display and live updates counter
+6. `app/ui/IncidentDetailsPopover.tsx` - Evidence display, live updates counter, and theme-consistent styling
 7. `app/ui/TextInput.tsx` - Fixed text color issues
 8. `app/map/map.tsx` - Enhanced location recalibration
 9. `app/map/mapUtils.tsx` - Improved geolocation with better error handling
@@ -201,6 +247,9 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
 11. `app/api/types.ts` - Added IncidentUpdate type
 12. `app/actions/uploadFile.ts` - Added presigned view URL function
 13. `app/globals.css` - Added live-pulse animation for live updates eye icon
+14. `app/layout.tsx` - Added ThemeProvider wrapper + pre-hydration theme script
+15. `src/contexts/ThemeContext.tsx` - New global theme context/provider
+16. `app/api/updates/route.ts` - New API endpoint for incident live updates
 
 ---
 
