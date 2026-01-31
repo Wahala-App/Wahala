@@ -190,8 +190,27 @@ export default function IncidentFeedPage() {
 
       const updatesData: IncidentUpdate[] = await res.json();
       
-      // Convert IncidentUpdate to MockUpdate format
-      const formattedUpdates: MockUpdate[] = updatesData.map((update) => {
+      const presignMediaUrl = async (mediaUrl: string): Promise<string> => {
+        try {
+          const presignRes = await fetch(
+            `/api/getImageUrl?url=${encodeURIComponent(mediaUrl)}`,
+            {
+              headers: {
+                Authorization: `Bearer ${idToken}`,
+              },
+            }
+          );
+
+          if (!presignRes.ok) return mediaUrl;
+          const data = (await presignRes.json()) as { url?: string };
+          return data.url || mediaUrl;
+        } catch {
+          return mediaUrl;
+        }
+      };
+
+      // Convert IncidentUpdate to MockUpdate format (and presign media URLs)
+      const formattedUpdates: MockUpdate[] = await Promise.all(updatesData.map(async (update) => {
         const createdAt = new Date(update.created_at);
         const now = new Date();
         const diffMs = now.getTime() - createdAt.getTime();
@@ -209,6 +228,7 @@ export default function IncidentFeedPage() {
         }
 
         const initial = (update.creator_username || "U").charAt(0).toUpperCase();
+        const presignedMediaUrl = update.media_url ? await presignMediaUrl(update.media_url) : undefined;
 
         return {
           id: update.id,
@@ -218,9 +238,9 @@ export default function IncidentFeedPage() {
           body: update.body,
           severity: update.severity,
           hasMedia: !!update.media_url,
-          mediaUrls: update.media_url ? [update.media_url] : undefined,
+          mediaUrls: presignedMediaUrl ? [presignedMediaUrl] : undefined,
         };
-      });
+      }));
 
       setUpdates(formattedUpdates);
     } catch (error) {
