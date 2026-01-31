@@ -134,7 +134,12 @@ export async function login(email: string, password: string) {
         password
     );
 
-   // await checkEmailVerification();   
+   
+    if (!user_credentials.user.emailVerified) {
+        console.log("User verification status:", user_credentials.user.emailVerified);
+        user_credentials.user.delete();
+        throw { type: "verify", message: "User account does not exist. Create an account and verify your email." };
+      }  
 
     console.log("User Credentials", user_credentials.user);
 
@@ -150,8 +155,8 @@ export async function login(email: string, password: string) {
             throw {
                 type: "password",
                 message:
-                "Wrong email or password. Try again or " +
-                "click Forgot password to reset it.",
+                `Wrong email or password. Try again, ` +
+                `click Forgot password to reset it or create account if you do not have one. `,
             };
         } else if (err.code.includes("auth/too-many-requests")) {
             throw {
@@ -159,15 +164,12 @@ export async function login(email: string, password: string) {
                 message: "Too many login attempts. Try again later.",
             };
         }
-    } else if (err.type == "verify") {
-        const credential = auth.currentUser;
-
-        if (credential != null) {
-            await sendEmailVerification(credential);
-        }
+    }  else if (err.type === "verify") 
+      {
         throw err;
-    } else {
-      throw { type: "general", message: "Login error occured. Try again." };
+      }
+    else {
+      throw { type: "general", message: `Login error occurred. Try again or Create account if you do not have one. ${err}` };
     }
   }
 }
