@@ -138,6 +138,32 @@ export default function HomeComponent() {
           console.log(err);
         }
       }, []);
+
+      const getUserInfo = useCallback ( async () => {
+        try {
+          const idToken = await getToken();
+          if (!idToken) {
+            return;
+          }
+          
+          const response = await fetch('/api/user', {
+                method: 'GET',
+                 headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                },
+             });
+          
+          if (response.ok) {
+            const userInfo = await response.json(); 
+            localStorage.setItem("userName", userInfo.user_name);
+            setHomeUserName(userInfo.user_name);
+           
+          
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      }, []);
   
   const selectedIncident = useMemo(
     () => pins.find((pin) => pin.id === selectedIncidentId) ?? null,
@@ -145,6 +171,7 @@ export default function HomeComponent() {
   );
 
    useEffect(() => {
+   getUserInfo();
     fetchLocationPins();
 
     const channel = supabase
@@ -371,8 +398,9 @@ export default function HomeComponent() {
   // Load user info from localStorage on mount
   useEffect(() => {
     try {
-      const n = localStorage.getItem("userName");
-      if (n) setHomeUserName(n);
+      // getUserInfo();
+      // const n = localStorage.getItem("userName");
+      // if (n) setHomeUserName(n);
       const l = localStorage.getItem("userLocation");
       if (l) {
         try {
