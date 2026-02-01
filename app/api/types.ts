@@ -13,6 +13,7 @@ export interface Incident {
   evidence_url?: string;
   // Number of live updates
   update_count?: number;
+  date_time: string;
 }
 
 export enum IncidentType {
