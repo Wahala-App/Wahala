@@ -577,7 +577,7 @@ export default function HomeComponent() {
             <IncidentDetailsPopover
               incident={selectedIncident}
               onClose={() => setSelectedIncidentId(null)}
-              onViewFullReport={(id: string) => router.push(`/report/${id}`)}
+              onViewFullReport={(id: string) => router.push(`/incident/${id}`)}
             />
           </div>
 
@@ -587,7 +587,7 @@ export default function HomeComponent() {
               <IncidentDetailsPopover
                 incident={selectedIncident}
                 onClose={() => setSelectedIncidentId(null)}
-                onViewFullReport={(id: string) => router.push(`/report/${id}`)}
+                onViewFullReport={(id: string) => router.push(`/incident/${id}`)}
               />
             </div>
           </div>

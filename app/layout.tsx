@@ -15,8 +15,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ 
+  children,
+  modal,
+}: { 
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
     <html>
       <head>
@@ -27,12 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            {modal}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
-
