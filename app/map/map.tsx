@@ -31,6 +31,8 @@ interface MapProps {
 // key = your custom ID, value = Marker instance
 const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMarkerSecondaryClick, onPositionClick }, ref) => {
   const markersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
+// Add this state at the top with other states
+const userLocationMarkerRef = useRef<Marker | null>(null);
 
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
@@ -59,6 +61,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
           center: [location.longitude, location.latitude],
           zoom: 15,
         });
+     addUserLocationMarker(location);
         console.log("✅ Map should now be centered on your location");
       } else {
         console.error("❌ Map reference is null - map may not be initialized");
@@ -67,6 +70,135 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
       console.error("❌ Error in recalibrateLocation:", error);
     }
   };
+
+
+  const addUserLocationMarker = (location: { latitude: number; longitude: number }) => {
+  if (userLocationMarkerRef.current) {
+    userLocationMarkerRef.current.remove();
+  }
+
+  if (!mapRef.current) return;
+
+  const container = document.createElement("div");
+  container.className = "user-location-container";
+  container.style.position = "relative";
+  container.style.width = "70px";
+  container.style.height = "70px";
+
+  // Create pulsing ring
+  const pulseRing = document.createElement("div");
+  pulseRing.style.position = "absolute";
+  pulseRing.style.top = "50%";
+  pulseRing.style.left = "50%";
+  pulseRing.style.width = "60px";
+  pulseRing.style.height = "60px";
+  pulseRing.style.borderRadius = "50%";
+  pulseRing.style.border = "2px solid #4285F4";
+  pulseRing.style.transform = "translate(-50%, -50%)";
+  pulseRing.style.animation = "pulse-ring 2s ease-out infinite";
+  container.appendChild(pulseRing);
+
+  // Create stick figure container (BIGGER)
+  const stickFigure = document.createElement("div");
+  stickFigure.style.position = "absolute";
+  stickFigure.style.top = "50%";
+  stickFigure.style.left = "50%";
+  stickFigure.style.width = "28px";
+  stickFigure.style.height = "36px";
+  stickFigure.style.transform = "translate(-50%, -50%)";
+  stickFigure.style.zIndex = "10";
+
+  // Head (bigger)
+  const head = document.createElement("div");
+  head.style.width = "10px";
+  head.style.height = "10px";
+  head.style.borderRadius = "50%";
+  head.style.backgroundColor = "#4285F4";
+  head.style.border = "2px solid white";
+  head.style.position = "absolute";
+  head.style.top = "0";
+  head.style.left = "50%";
+  head.style.transform = "translateX(-50%)";
+  head.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
+  stickFigure.appendChild(head);
+
+  // Body (longer)
+  const body = document.createElement("div");
+  body.style.width = "3px";
+  body.style.height = "12px";
+  body.style.backgroundColor = "#4285F4";
+  body.style.position = "absolute";
+  body.style.top = "10px";
+  body.style.left = "50%";
+  body.style.transform = "translateX(-50%)";
+  body.style.boxShadow = "0 1px 3px rgba(0,0,0,0.2)";
+  stickFigure.appendChild(body);
+
+  // Left arm
+  const leftArm = document.createElement("div");
+  leftArm.style.width = "8px";
+  leftArm.style.height = "2px";
+  leftArm.style.backgroundColor = "#4285F4";
+  leftArm.style.position = "absolute";
+  leftArm.style.top = "13px";
+  leftArm.style.left = "6px";
+  leftArm.style.transform = "rotate(-35deg)";
+  leftArm.style.transformOrigin = "right center";
+  leftArm.style.boxShadow = "0 1px 2px rgba(0,0,0,0.2)";
+  stickFigure.appendChild(leftArm);
+
+  // Right arm
+  const rightArm = document.createElement("div");
+  rightArm.style.width = "8px";
+  rightArm.style.height = "2px";
+  rightArm.style.backgroundColor = "#4285F4";
+  rightArm.style.position = "absolute";
+  rightArm.style.top = "13px";
+  rightArm.style.right = "6px";
+  rightArm.style.transform = "rotate(35deg)";
+  rightArm.style.transformOrigin = "left center";
+  rightArm.style.boxShadow = "0 1px 2px rgba(0,0,0,0.2)";
+  stickFigure.appendChild(rightArm);
+
+  // Left leg - angled outward like / 
+  const leftLeg = document.createElement("div");
+  leftLeg.style.width = "2px";
+  leftLeg.style.height = "12px";
+  leftLeg.style.backgroundColor = "#4285F4";
+  leftLeg.style.position = "absolute";
+  leftLeg.style.top = "22px";
+  leftLeg.style.left = "50%";
+  leftLeg.style.transform = "translateX(-50%) rotate(-25deg)";
+  leftLeg.style.transformOrigin = "top center";
+  leftLeg.style.boxShadow = "0 1px 2px rgba(0,0,0,0.2)";
+  stickFigure.appendChild(leftLeg);
+
+  // Right leg - angled outward like \
+  const rightLeg = document.createElement("div");
+  rightLeg.style.width = "2px";
+  rightLeg.style.height = "12px";
+  rightLeg.style.backgroundColor = "#4285F4";
+  rightLeg.style.position = "absolute";
+  rightLeg.style.top = "22px";
+  rightLeg.style.left = "50%";
+  rightLeg.style.transform = "translateX(-50%) rotate(25deg)";
+  rightLeg.style.transformOrigin = "top center";
+  rightLeg.style.boxShadow = "0 1px 2px rgba(0,0,0,0.2)";
+  stickFigure.appendChild(rightLeg);
+
+  container.appendChild(stickFigure);
+
+  const marker = new Marker({
+    element: container,
+    draggable: false,
+    anchor: "center",
+  })
+    .setLngLat([location.longitude, location.latitude])
+    .addTo(mapRef.current);
+
+  userLocationMarkerRef.current = marker;
+};
+  // Add this function after your other functions
 
   const addCustomMarker = (incident: Incident) => {
 
@@ -211,6 +343,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
             mapRef.current.once("load", () => {
                 setIsInitializing(false);
             });
+            addUserLocationMarker(location);
         } else {
             setIsInitializing(false);
         }
@@ -223,6 +356,7 @@ const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMa
 
     useEffect(() => {
         initializeMap();
+        
 
         return () => {
             markersRef.current.forEach(marker => marker.remove());
