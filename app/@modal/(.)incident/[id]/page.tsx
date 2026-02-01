@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import IncidentFeedContent from "@/app/incident/[id]/IncidentFeedContent";
+import IncidentFeedContent from "../../../../app/incident/[id]/IncidentFeedContent";
 
 export default function IncidentModal() {
   const router = useRouter();
