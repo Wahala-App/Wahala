@@ -1,10 +1,9 @@
 "use client";
 
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../src/contexts/AuthContext";
-import ErrorBoundary from "./ui/ErrorBoundary";
+import { ThemeProvider } from "../src/contexts/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,16 +15,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ 
+  children,
+  modal,
+}: { 
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
     <html>
-      <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <head>
+        {/* Apply saved theme before React renders to avoid flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var k='themeChoice';var v=localStorage.getItem(k);var r=document.documentElement;if(v==='light'||v==='dark'){r.setAttribute('data-theme',v);}else{r.removeAttribute('data-theme');}}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+            {modal}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
-

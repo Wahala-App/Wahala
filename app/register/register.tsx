@@ -10,6 +10,7 @@ import { signup } from "@/app/actions/auth";
 export default function SignUpComponent() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
+    const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,10 +31,14 @@ export default function SignUpComponent() {
             return;
         }
        
-        await signup(firstName, lastName, email, password);
-        
-        console.log("Successfully registered!");
-        router.push("/login");
+        await signup(email, password);
+        localStorage.setItem('pendingVerification', JSON.stringify({
+        firstName: firstName,
+        lastName: lastName,
+        userName: userName
+        }));
+        console.log("Successfully registered on firebase!");
+        router.push("/verify");
     }
 
     return (
@@ -49,18 +54,25 @@ export default function SignUpComponent() {
 
             <div className="grid sm:grid-cols-1 mb-4">
                 <TitledTextInput
-                    className={"mb-4"}
+                    className={"mb-2"}
                     title={"First Name"}
                     type={"text"}
                     placeholder={"First Name"}
                     onChange={(e) => setFirstName(e.target.value)}
                 />
                 <TitledTextInput
-                    className={"mb-4"}
+                    className={"mb-2"}
                     title={"Last Name"}
                     type={"text"}
                     placeholder={"Last Name"}
                     onChange={(e) => setLastName(e.target.value)}
+                />
+                <TitledTextInput
+                    className={"mb-4"}
+                    title={"User Name"}
+                    type={"text"}
+                    placeholder={"User Name"}
+                    onChange={(e) => setUserName(e.target.value)}
                 />
                 <TitledTextInput
                     className={"mb-4"}
@@ -104,32 +116,7 @@ export default function SignUpComponent() {
                 Already have an account? <u><a href={"/login"}> Login.</a></u>
             </div>
 
-            <div className="flex gap-15 mt-6">
-                <RoundIconButton>
-                    <Image
-                        src={"/socialMedia/google.svg"}
-                        alt={"Google Logo"}
-                        width={30}
-                        height={30}
-                    />
-                </RoundIconButton>
-                <RoundIconButton className="dark:invert">
-                    <Image
-                        src={"/socialMedia/apple.svg"}
-                        alt={"Apple Logo"}
-                        width={30}
-                        height={30}
-                    />
-                </RoundIconButton>
-                <RoundIconButton>
-                    <Image
-                        src={"/socialMedia/facebook.svg"}
-                        alt={"Facebook Logo"}
-                        width={30}
-                        height={30}
-                    />
-                </RoundIconButton>
-            </div>
+          
         </div>
     );
 }

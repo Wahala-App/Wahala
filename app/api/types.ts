@@ -5,6 +5,14 @@ export interface Incident {
   title: string;
   description?: string;
   coordinates: Location;
+  // Stored as string in Supabase, but treated as 1–10 scale
+  severity?: number | string;
+  // Username of the incident creator
+  creator_username?: string;
+  // S3 URL of uploaded evidence file
+  evidence_url?: string;
+  // Number of live updates
+  update_count?: number;
 }
 
 export enum IncidentType {
@@ -21,4 +29,15 @@ export enum IncidentType {
 export interface Location {
   latitude: number;
   longitude: number;
+}
+
+export interface IncidentUpdate {
+  id: string;
+  incident_id: string;
+  creator_uid: string;
+  creator_username?: string;
+  body: string;
+  severity: number;
+  media_url?: string;
+  created_at: string;
 }

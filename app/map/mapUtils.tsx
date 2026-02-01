@@ -7,25 +7,55 @@ export const FALLBACK_LOCATION = {
 };
 
 export default function getCurrLocation(): Promise<Location> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
+      console.warn("Geolocation is not supported by this browser");
       // Fallback coordinates if geolocation is not supported
       resolve(FALLBACK_LOCATION);
       return;
     }
 
+    const options = {
+      enableHighAccuracy: true, // Use GPS if available
+      timeout: 10000, // 10 second timeout
+      maximumAge: 0, // Don't use cached location, always get fresh one
+    };
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const long = position.coords.longitude;
-        console.log("Current location:", lat, long);
+        console.log("✅ Successfully got current location:", lat, long);
+        console.log("Accuracy:", position.coords.accuracy, "meters");
         resolve({ latitude: lat, longitude: long });
       },
       (error) => {
-        console.error("Error getting location:", error);
-        // Fallback coordinates if geolocation fails
+        let errorMessage = "Unknown error";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "User denied the request for Geolocation. Please enable location permissions in your browser settings.";
+            console.error("❌ Location error: Permission denied");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            console.error("❌ Location error: Position unavailable");
+            break;
+          case error.TIMEOUT:
+            errorMessage = "The request to get user location timed out.";
+            console.error("❌ Location error: Request timeout");
+            break;
+          default:
+            errorMessage = "An unknown error occurred while getting location.";
+            console.error("❌ Location error:", error);
+            break;
+        }
+        
+        // Still resolve with fallback, but log the error clearly
+        console.warn("⚠️ Using fallback location due to error:", errorMessage);
+        console.warn("⚠️ Fallback location:", FALLBACK_LOCATION);
         resolve(FALLBACK_LOCATION);
       },
+      options
     );
   });
 }

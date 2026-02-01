@@ -42,10 +42,6 @@ export default function LoginComponent() {
                 setUserState("Signed In")
                 router.push("/");
             } catch (err: any) {
-                if (err.type =="verify") {
-                    router.push("/verify");
-                    return;
-                }
             
                 setErrorMessage(err.message);
                 console.log("Handle Login Err", err);

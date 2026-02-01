@@ -36,8 +36,6 @@ export async function getToken(): Promise<string | null> {
   }
 }
 export async function signup(
-  firstName: string,
-  lastName: string,
   email: string,
   password: string
 ) {
@@ -53,21 +51,7 @@ export async function signup(
 
     await sendEmailVerification(user);
 
-    // ✅ 3. Call Supabase function directly from client
-    const { data, error } = await supabase.rpc('create_user_profile', {
-      p_uid: user.uid,
-      p_email: user.email,
-      p_first_name: firstName,
-      p_last_name: lastName,
-    });
-
-    if (error) {
-      // Rollback Firebase user
-      await user.delete();
-      throw new Error('Failed to create user: ' + error.message);
-    }
-
-    console.log("User signed up and save: ", user);
+    console.log("User signed up on firebase and save: ", user);
 
     sessionStorage.setItem("email", email);
   } catch (err: any) {
@@ -89,16 +73,37 @@ export async function signup(
 }
 }
 
-export async function checkEmailVerification() {
+export async function checkEmailVerification(firstName: string, lastName: string,  userName: string) {
   try {
-    const credential = auth.currentUser;
-    if (credential) {
-      await reload(credential);
+    console.log("Checking email verification status...");
+    const user = auth.currentUser;
+    if (user) {
+      await reload(user);
 
-      if (!credential.emailVerified) {
-        console.log("email veirfied syatus:", credential);
+      if (!user.emailVerified) {
+        console.log("User verification status:", user.emailVerified);
         throw { type: "verify", message: "Please verify your email." };
       }
+
+          // ✅ 3. Call Supabase function directly from client
+    const { data, error } = await supabase.rpc('create_user_profile', {
+      p_uid: user.uid,
+      p_email: user.email,
+      p_first_name: firstName,
+      p_last_name: lastName,
+      p_user_name: userName,
+    });
+
+    if (error) {
+      // Rollback Firebase user
+      await user.delete();
+      throw new Error('Failed to create user: ' + error.message);
+    }
+
+    }
+
+    else{
+      throw { type: "signup", message: "No user signed up" };
     }
 
     return true;
@@ -129,7 +134,12 @@ export async function login(email: string, password: string) {
         password
     );
 
-    await checkEmailVerification();   
+   
+    if (!user_credentials.user.emailVerified) {
+        console.log("User verification status:", user_credentials.user.emailVerified);
+        user_credentials.user.delete();
+        throw { type: "verify", message: "User account does not exist. Create an account and verify your email." };
+      }  
 
     console.log("User Credentials", user_credentials.user);
 
@@ -145,8 +155,8 @@ export async function login(email: string, password: string) {
             throw {
                 type: "password",
                 message:
-                "Wrong email or password. Try again or " +
-                "click Forgot password to reset it.",
+                `Wrong email or password. Try again, ` +
+                `click Forgot password to reset it or create account if you do not have one. `,
             };
         } else if (err.code.includes("auth/too-many-requests")) {
             throw {
@@ -154,15 +164,12 @@ export async function login(email: string, password: string) {
                 message: "Too many login attempts. Try again later.",
             };
         }
-    } else if (err.type == "verify") {
-        const credential = auth.currentUser;
-
-        if (credential != null) {
-            await sendEmailVerification(credential);
-        }
+    }  else if (err.type === "verify") 
+      {
         throw err;
-    } else {
-      throw { type: "general", message: "Login error occured. Try again." };
+      }
+    else {
+      throw { type: "general", message: `Login error occurred. Try again or Create account if you do not have one. ${err}` };
     }
   }
 }
