@@ -126,9 +126,15 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
   const [updateMediaPreview, setUpdateMediaPreview] = useState<string | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isPostingUpdate, setIsPostingUpdate] = useState(false);
+  const [isDeletingUpdate, setIsDeletingUpdate] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [isLoadingUpdates, setIsLoadingUpdates] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    kind: "update" | "disprove";
+  } | null>(null);
 
   // Calculate average severity with time-decay weighting
   const averageSeverity = useMemo(() => {
@@ -659,6 +665,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
 
   const handleDeleteUpdate = async (updateId: string) => {
     try {
+      setIsDeletingUpdate(true);
       const idToken = await getToken();
       if (!idToken) {
         setPostError("Not authenticated. Please log in.");
@@ -698,6 +705,8 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
       } catch {}
     } catch (e: any) {
       setPostError(e?.message || "Failed to delete update");
+    } finally {
+      setIsDeletingUpdate(false);
     }
   };
 
@@ -828,7 +837,12 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                       {canDeleteUpdate(update) && (
                         <button
                           type="button"
-                          onClick={() => handleDeleteUpdate(update.id)}
+                          onClick={() =>
+                            setDeleteConfirm({
+                              id: update.id,
+                              kind: (update.kind ?? "update") as "update" | "disprove",
+                            })
+                          }
                           className="ml-auto inline-flex items-center justify-center rounded-full p-1.5 text-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           aria-label="Delete update"
                           title="Delete update"
@@ -1006,6 +1020,61 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
       </div>
 
       {/* Image Modal/Lightbox */}
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => (isDeletingUpdate ? null : setDeleteConfirm(null))}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-background text-foreground shadow-2xl border border-foreground/10 p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-black">
+                  Delete {deleteConfirm.kind === "disprove" ? "disprove" : "update"}?
+                </div>
+                <div className="mt-1 text-xs text-foreground/60">
+                  This action can’t be undone.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={isDeletingUpdate}
+                className="rounded-full p-1.5 text-foreground/40 hover:text-foreground hover:bg-foreground/5 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={isDeletingUpdate}
+                className="flex-1 h-10 rounded-full border border-foreground/20 text-sm font-bold text-foreground hover:bg-foreground/5 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = deleteConfirm.id;
+                  setDeleteConfirm(null);
+                  await handleDeleteUpdate(id);
+                }}
+                disabled={isDeletingUpdate}
+                className="flex-1 h-10 rounded-full bg-red-600 text-white text-sm font-black hover:bg-red-500 disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isImageModalOpen && evidenceImageUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
