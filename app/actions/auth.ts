@@ -14,9 +14,11 @@ import {
   onAuthStateChanged,
   setPersistence,
   browserSessionPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 
 import { supabase } from "@/lib/server/supabase";
+import { clearCachedUserProfile } from "@/app/utils/authCache";
 
 let credentials
 // Function to get the current user's fresh ID token
@@ -127,7 +129,8 @@ export async function resetPassword(email: string): Promise<boolean> {
 export async function login(email: string, password: string) {
   try {
     // console.log(email);
-    await setPersistence(auth, browserSessionPersistence);
+    // Persist across browser restarts (match mobile)
+    await setPersistence(auth, browserLocalPersistence);
     const user_credentials = await signInWithEmailAndPassword(
         auth,
         email,
@@ -182,6 +185,13 @@ export async function logout() {
       throw { type: "login", message: "No user is logged in" };
     }
     await signOut(auth);
+    try {
+      clearCachedUserProfile();
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userLocation");
+    } catch {
+      // ignore
+    }
     console.log("User was successfully logged out");
   } catch (err) {
     console.log("Error occured logout function", err, auth);

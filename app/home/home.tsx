@@ -19,6 +19,7 @@ import { typeOf, typeColor, getHighlights, getRecentAlerts, getTrends } from "..
 import getCurrLocation from "../map/mapUtils";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { useTheme } from "@/src/contexts/ThemeContext";
+import { loadCachedPins, removePinFromCache, savePins, upsertPinInCache } from "../utils/pinsCache";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -125,6 +126,7 @@ export default function HomeComponent() {
           if (response.ok) {
             const pins = await response.json(); 
             setPins(Array.isArray(pins) ? pins : []);
+            savePins(Array.isArray(pins) ? pins : []);
             
             for (const pin of pins) {
                if (mapRef.current) {
@@ -171,7 +173,20 @@ export default function HomeComponent() {
   );
 
    useEffect(() => {
-   getUserInfo();
+    // Cache-first pins: show cached pins immediately, then refresh from API
+    const cachedPins = loadCachedPins();
+    if (cachedPins && cachedPins.length > 0) {
+      setPins(cachedPins);
+      try {
+        for (const pin of cachedPins) {
+          mapRef.current?.addCustomMarker(pin);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    getUserInfo();
     fetchLocationPins();
 
     const channel = supabase
@@ -188,6 +203,7 @@ export default function HomeComponent() {
 
           if (payload.eventType === 'INSERT') {
             setPins((prev) => [payload.new as Incident, ...prev]);
+            try { upsertPinInCache(payload.new as Incident); } catch {}
             mapRef.current?.addCustomMarker(payload.new as Incident);
 
           } else if (payload.eventType === 'UPDATE') {
@@ -196,8 +212,10 @@ export default function HomeComponent() {
                 pin.id === payload.new.id ? (payload.new as Incident) : pin
               )
             );
+            try { upsertPinInCache(payload.new as Incident); } catch {}
           } else if (payload.eventType === 'DELETE') {
             setPins((prev) => prev.filter((pin) => pin.id !== payload.old.id));
+            try { removePinFromCache(payload.old.id as string); } catch {}
             mapRef.current?.syncMarkers(payload.old.id);
           }
         }
@@ -372,6 +390,7 @@ export default function HomeComponent() {
             const incidentToDeleteId= await response.json(); 
             console.log("Yur=>", incidentToDeleteId)
             mapRef.current?.syncMarkers(incidentToDeleteId);
+            try { removePinFromCache(incidentToDeleteId); } catch {}
         } else {
             const errorText = await response.text();
             console.error('Delete failed:', response.status, errorText);

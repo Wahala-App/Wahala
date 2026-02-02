@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { clearCachedUserProfile, loadCachedUserProfile, saveCachedUserProfile, type CachedUserProfile } from '@/app/utils/authCache';
 
 export type ErrorType =
   | "general"
@@ -38,6 +39,7 @@ type AuthContextValue = {
   setLoading: (loading: boolean) => void;
   userState:  StateType;
   setUserState: (state: StateType) => void;
+  userProfile: CachedUserProfile | null;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -48,19 +50,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pastErrorType, setPastErrorType] = useState<ErrorType>("general");
   const [isLoading, setLoading] = useState(true);
   const [userState, setUserState] = useState<StateType>("Signed Out");
+  const [userProfile, setUserProfile] = useState<CachedUserProfile | null>(null);
 
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    if (user === null) {
-      setUserState("Signed Out")
-    } else {
-      setUserState("Signed In")
-    }
-    setLoading(false); // Move this inside the callback
-  })
-  
-  return unsubscribe; // Clean up the listener
-}, []);
+    // Load cached profile immediately for fast startup (like mobile)
+    setUserProfile(loadCachedUserProfile());
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user === null) {
+        setUserState("Signed Out");
+        setUserProfile(null);
+        clearCachedUserProfile();
+        setLoading(false);
+        return;
+      }
+
+      setUserState("Signed In");
+
+      // Refresh profile from API (cache-first + background refresh)
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch("/api/user", {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          if (data && data !== false) {
+            saveCachedUserProfile(data as CachedUserProfile);
+            setUserProfile(data as CachedUserProfile);
+          }
+        }
+      } catch {
+        // keep cached profile
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return unsubscribe; // Clean up the listener
+  }, []);
   
   const setError = useCallback((type: ErrorType, message: string) => {
     setErrors(prev => ({ ...prev, [type]: message }));
@@ -80,7 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       setLoading,
       setUserState,
-      userState
+      userState,
+      userProfile
     }}>
       {children}
     </AuthContext.Provider>
