@@ -378,7 +378,7 @@ export async function deleteIncidentUpdate(idToken: string, updateId: string): P
       .maybeSingle();
 
     if (updateErr || !updateRow) {
-      throw { type: "data", message: "Update not found" };
+      throw { type: "data", code: "not_found", message: "Update not found" };
     }
 
     const incidentId = updateRow.incident_id as string;

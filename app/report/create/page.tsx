@@ -9,11 +9,13 @@ import { TextInput } from "@/app/ui/TextInput";
 import { DefaultButton, PillButton } from "@/app/ui/button";
 import { MapPin } from "lucide-react";
 import { getCachedAddress, setCachedAddress } from "@/app/utils/addressCache";
+import { validateMediaForSeverity } from "@/app/utils/mediaRequirements";
 
 export default function CreateReportPage() {
   const router = useRouter();
 
   const confirmDialogRef = useRef<HTMLDialogElement>(null);
+  const mediaReqDialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [incidentType, setIncidentType] = useState<IncidentType>(IncidentType.OTHER);
@@ -24,6 +26,7 @@ export default function CreateReportPage() {
   const [areaSize, setAreaSize] = useState<string>("building");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
+  const [mediaReqError, setMediaReqError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -147,6 +150,12 @@ export default function CreateReportPage() {
     else confirmDialogRef.current.close();
   }, [showConfirmation]);
 
+  useEffect(() => {
+    if (!mediaReqDialogRef.current) return;
+    if (mediaReqError) mediaReqDialogRef.current.showModal();
+    else mediaReqDialogRef.current.close();
+  }, [mediaReqError]);
+
   const getSeverityColor = (value: number) => {
     if (value <= 3) return { color: "bg-green-500", label: "Low" };
     if (value <= 6) return { color: "bg-yellow-500", label: "Medium" };
@@ -164,9 +173,16 @@ export default function CreateReportPage() {
       return;
     }
 
-    const maxSize = 4 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setFileError("File size must be less than 4MB. Please select a smaller file.");
+    const maxImageBytes = 4 * 1024 * 1024;
+    const maxVideoBytes = 50 * 1024 * 1024;
+    const v = validateMediaForSeverity({
+      severity,
+      file,
+      maxImageBytes,
+      maxVideoBytes,
+    });
+    if (!v.ok) {
+      setFileError(v.message);
       setEvidenceFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -241,6 +257,22 @@ export default function CreateReportPage() {
   const handleConfirmedSubmit = async () => {
     if (!location) return;
     if (isSubmitting) return;
+
+    // Enforce severity-based evidence requirement (before upload/submit)
+    const maxImageBytes = 4 * 1024 * 1024;
+    const maxVideoBytes = 50 * 1024 * 1024;
+    const mediaValidation = validateMediaForSeverity({
+      severity,
+      file: evidenceFile,
+      maxImageBytes,
+      maxVideoBytes,
+    });
+    if (!mediaValidation.ok) {
+      setShowConfirmation(false);
+      setMediaReqError(mediaValidation.message);
+      setValidationErrors((prev) => ({ ...prev, evidenceFile: true }));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -558,12 +590,15 @@ export default function CreateReportPage() {
           <div>
             {fileError && <p className="text-xs text-red-600 mb-1">⚠️ {fileError}</p>}
             <label className="block text-sm font-medium mb-2">
-              Evidence Media <span className="text-foreground/60">(Optional, max 4MB)</span>
+              Evidence Media{" "}
+              <span className="text-foreground/60">
+                (Required: {severity > 5 ? "Video" : "Picture"} · Max {severity > 5 ? "50MB" : "4MB"})
+              </span>
             </label>
             <input
               ref={fileInputRef}
               type="file"
-              accept="*/*"
+              accept={severity > 5 ? "video/*" : "image/*"}
               onChange={handleFileChange}
               className="w-full p-2 border border-foreground/10 rounded-md text-sm"
             />
@@ -617,6 +652,24 @@ export default function CreateReportPage() {
               Yes
             </PillButton>
           </div>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={mediaReqDialogRef}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-2xl p-0 w-[85vw] max-w-sm m-0 z-[9999] backdrop:bg-transparent"
+        style={{ border: "none" }}
+      >
+        <div className="bg-white rounded-lg p-4 shadow-2xl border border-gray-200">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">Evidence required</h3>
+          <p className="text-sm text-gray-600 mb-4">{mediaReqError}</p>
+          <DefaultButton
+            type="button"
+            onClick={() => setMediaReqError(null)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+          >
+            OK
+          </DefaultButton>
         </div>
       </dialog>
     </div>

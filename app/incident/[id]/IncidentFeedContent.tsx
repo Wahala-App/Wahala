@@ -11,6 +11,7 @@ import {
 import { getToken } from "@/app/actions/auth";
 import { getCachedAddress, setCachedAddress } from "@/app/utils/addressCache";
 import { IncidentUpdate } from "@/app/api/types";
+import { inferMediaTypeFromUrl, validateMediaForSeverity } from "@/app/utils/mediaRequirements";
 
 // --- TYPES ---
 type MockUpdate = {
@@ -124,12 +125,14 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
   const [updateMediaFile, setUpdateMediaFile] = useState<File | null>(null);
   const [updateMediaUrl, setUpdateMediaUrl] = useState<string | null>(null);
   const [updateMediaPreview, setUpdateMediaPreview] = useState<string | null>(null);
+  const [updateMediaPreviewKind, setUpdateMediaPreviewKind] = useState<"image" | "video" | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isPostingUpdate, setIsPostingUpdate] = useState(false);
   const [isDeletingUpdate, setIsDeletingUpdate] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [isLoadingUpdates, setIsLoadingUpdates] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const updateMediaObjectUrlRef = useRef<string | null>(null);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string;
@@ -492,27 +495,32 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setPostError('Please select an image file');
-      return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setPostError('Image size must be less than 5MB');
+    const maxImageBytes = 5 * 1024 * 1024;
+    const maxVideoBytes = 50 * 1024 * 1024;
+    const v = validateMediaForSeverity({
+      severity: updateSeverity,
+      file,
+      maxImageBytes,
+      maxVideoBytes,
+    });
+    if (!v.ok) {
+      setPostError(v.message);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setUpdateMediaFile(file);
     setPostError(null);
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setUpdateMediaPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    // Create preview (supports image + video)
+    if (updateMediaObjectUrlRef.current) {
+      URL.revokeObjectURL(updateMediaObjectUrlRef.current);
+      updateMediaObjectUrlRef.current = null;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    updateMediaObjectUrlRef.current = previewUrl;
+    setUpdateMediaPreview(previewUrl);
+    setUpdateMediaPreviewKind(file.type.startsWith("video/") ? "video" : "image");
   };
 
   // Handle file upload to S3
@@ -558,10 +566,17 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
     setUpdateMediaFile(null);
     setUpdateMediaUrl(null);
     setUpdateMediaPreview(null);
+    setUpdateMediaPreviewKind(null);
+    if (updateMediaObjectUrlRef.current) {
+      URL.revokeObjectURL(updateMediaObjectUrlRef.current);
+      updateMediaObjectUrlRef.current = null;
+    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
+  const [mediaReqPopup, setMediaReqPopup] = useState<string | null>(null);
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -575,6 +590,20 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
       const idToken = await getToken();
       if (!idToken) {
         setPostError('Not authenticated. Please log in.');
+        return;
+      }
+
+      // Enforce severity-based media requirement for updates/disproves
+      const maxImageBytes = 5 * 1024 * 1024;
+      const maxVideoBytes = 50 * 1024 * 1024;
+      const mediaValidation = validateMediaForSeverity({
+        severity: updateSeverity,
+        file: updateMediaFile,
+        maxImageBytes,
+        maxVideoBytes,
+      });
+      if (!mediaValidation.ok) {
+        setMediaReqPopup(mediaValidation.message);
         return;
       }
 
@@ -710,6 +739,8 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
     }
   };
 
+  const incidentEvidenceIsVideo = inferMediaTypeFromUrl(evidenceImageUrl) === "video";
+
   return (
     <div className="h-full bg-background text-foreground font-sans flex flex-col">
       {/* HEADER */}
@@ -760,22 +791,32 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
               <div className="mt-3 mb-3 rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
                 {isLoadingEvidence ? (
                   <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
-                    <span className="text-xs text-foreground/40">Loading image...</span>
+                    <span className="text-xs text-foreground/40">Loading media...</span>
                   </div>
                 ) : evidenceImageUrl ? (
-                  <img
-                    src={evidenceImageUrl}
-                    alt="Evidence"
-                    className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setIsImageModalOpen(true)}
-                    onError={(e) => {
-                      console.error("Error loading evidence image:", evidenceImageUrl);
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
+                  incidentEvidenceIsVideo ? (
+                    <video
+                      src={evidenceImageUrl}
+                      className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
+                      controls
+                      playsInline
+                      onClick={() => setIsImageModalOpen(true)}
+                    />
+                  ) : (
+                    <img
+                      src={evidenceImageUrl}
+                      alt="Evidence"
+                      className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setIsImageModalOpen(true)}
+                      onError={(e) => {
+                        console.error("Error loading evidence image:", evidenceImageUrl);
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )
                 ) : (
                   <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
-                    <span className="text-xs text-foreground/40">Failed to load image</span>
+                    <span className="text-xs text-foreground/40">Failed to load media</span>
                   </div>
                 )}
               </div>
@@ -858,11 +899,23 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
 
                   {update.hasMedia && update.mediaUrls && (
                     <div className="mt-2 grid gap-2">
-                      {update.mediaUrls.map((url, i) => (
-                         <div key={i} className="rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
-                            <img src={url} alt="Evidence" className="w-full h-auto object-cover max-h-48" />
-                         </div>
-                      ))}
+                        {update.mediaUrls.map((url, i) => {
+                        const isVideo = inferMediaTypeFromUrl(url) === "video";
+                        return (
+                          <div key={i} className="rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
+                            {isVideo ? (
+                              <video
+                                src={url}
+                                className="w-full h-auto object-cover max-h-48"
+                                controls
+                                playsInline
+                              />
+                            ) : (
+                              <img src={url} alt="Evidence" className="w-full h-auto object-cover max-h-48" />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -946,11 +999,20 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
               {updateMediaPreview && (
                 <div className="px-2 relative">
                   <div className="relative inline-block">
-                    <img
-                      src={updateMediaPreview}
-                      alt="Preview"
-                      className="h-20 w-20 object-cover rounded-lg border border-foreground/10"
-                    />
+                    {updateMediaPreviewKind === "video" ? (
+                      <video
+                        src={updateMediaPreview}
+                        className="h-20 w-20 object-cover rounded-lg border border-foreground/10"
+                        controls
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={updateMediaPreview}
+                        alt="Preview"
+                        className="h-20 w-20 object-cover rounded-lg border border-foreground/10"
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={handleRemoveMedia}
@@ -972,12 +1034,46 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                 </div>
               )}
 
+              {mediaReqPopup && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                  onClick={() => setMediaReqPopup(null)}
+                >
+                  <div
+                    className="w-full max-w-sm rounded-2xl bg-background text-foreground shadow-2xl border border-foreground/10 p-4"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-black">Media required</div>
+                        <div className="mt-1 text-xs text-foreground/60">{mediaReqPopup}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMediaReqPopup(null)}
+                        className="rounded-full p-1.5 text-foreground/40 hover:text-foreground hover:bg-foreground/5"
+                        aria-label="Close"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMediaReqPopup(null)}
+                      className="mt-4 w-full h-10 rounded-full bg-foreground text-background text-sm font-black hover:opacity-90"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Input Form */}
               <form onSubmit={handlePost} className="relative flex items-center gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -1091,11 +1187,20 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
             className="relative max-w-full max-h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={evidenceImageUrl}
-              alt="Evidence - Full size"
-              className="max-w-full max-h-[90vh] object-contain rounded-lg"
-            />
+            {incidentEvidenceIsVideo ? (
+              <video
+                src={evidenceImageUrl}
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                playsInline
+              />
+            ) : (
+              <img
+                src={evidenceImageUrl}
+                alt="Evidence - Full size"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            )}
           </div>
         </div>
       )}

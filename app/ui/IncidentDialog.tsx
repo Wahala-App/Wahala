@@ -9,6 +9,7 @@ import { getToken } from "../actions/auth";
 import { formatInTimeZone, format } from 'date-fns-tz';
 import { MapPin } from "lucide-react";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
+import { requiredMediaTypeFromSeverity, validateMediaForSeverity } from "../utils/mediaRequirements";
 
 interface IncidentDialogProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export function IncidentDialog({
 }: IncidentDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const confirmDialogRef = useRef<HTMLDialogElement>(null);
+  const mediaReqDialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [incidentType, setIncidentType] = useState(selectedIncidentType);
   const [title, setTitle] = useState("");
@@ -45,6 +47,7 @@ export function IncidentDialog({
   const [areaSize, setAreaSize] = useState<string>("building");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
+  const [mediaReqError, setMediaReqError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState({
     title: false,
     description: false,
@@ -179,6 +182,12 @@ export function IncidentDialog({
   }, [showConfirmation]);
 
   useEffect(() => {
+    if (!mediaReqDialogRef.current) return;
+    if (mediaReqError) mediaReqDialogRef.current.showModal();
+    else mediaReqDialogRef.current.close();
+  }, [mediaReqError]);
+
+  useEffect(() => {
     if (selectedIncidentType) {
       setIncidentType(selectedIncidentType);
     }
@@ -276,16 +285,31 @@ useEffect(() => {
     setValidationErrors(prev => ({ ...prev, evidenceFile: false }));
     
     if (file) {
-      const maxSize = 4 * 1024 * 1024;
-      if (file.size > maxSize) {
-        setFileError("File size must be less than 4MB. Please select a smaller file.");
+      const required = requiredMediaTypeFromSeverity(severity);
+      const maxImageBytes = 4 * 1024 * 1024;
+      const maxVideoBytes = 50 * 1024 * 1024;
+      const v = validateMediaForSeverity({
+        severity,
+        file,
+        maxImageBytes,
+        maxVideoBytes,
+      });
+
+      if (!v.ok) {
+        setFileError(v.message);
         setEvidenceFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      
+
+      // If required is video, allow only video selection (accept also enforced in UI)
+      if (required === "video" && !file.type.startsWith("video/")) {
+        setFileError("Severity is above 5. Please upload a video.");
+        setEvidenceFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
       setEvidenceFile(file);
     }
   };
@@ -318,6 +342,22 @@ useEffect(() => {
   };
 
  const handleConfirmedSubmit = async () => {
+  // Enforce severity-based evidence requirement
+  const maxImageBytes = 4 * 1024 * 1024;
+  const maxVideoBytes = 50 * 1024 * 1024;
+  const mediaValidation = validateMediaForSeverity({
+    severity,
+    file: evidenceFile,
+    maxImageBytes,
+    maxVideoBytes,
+  });
+  if (!mediaValidation.ok) {
+    setShowConfirmation(false);
+    setMediaReqError(mediaValidation.message);
+    setValidationErrors((prev) => ({ ...prev, evidenceFile: true }));
+    return;
+  }
+
   onSubmit({
     incidentType,
     title: title.trim(),
@@ -694,12 +734,15 @@ useEffect(() => {
                 <p className="text-xs text-red-600 mb-1">⚠️ {fileError}</p>
               )}
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Evidence Media <span className="text-gray-500">(Optional, max 4MB)</span>
+                Evidence Media{" "}
+                <span className="text-gray-500">
+                  (Required: {severity > 5 ? "Video" : "Picture"} · Max {severity > 5 ? "50MB" : "4MB"})
+                </span>
               </label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="*/*"
+                accept={severity > 5 ? "video/*" : "image/*"}
                 onChange={handleFileChange}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
@@ -758,6 +801,28 @@ useEffect(() => {
               Yes
             </PillButton>
           </div>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={mediaReqDialogRef}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-2xl p-0 w-[85vw] max-w-sm m-0 z-[9999] backdrop:bg-transparent"
+        style={{ border: "none" }}
+      >
+        <div className="bg-white rounded-lg p-4 sm:p-6 shadow-2xl border border-gray-200">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+            Evidence required
+          </h3>
+          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
+            {mediaReqError}
+          </p>
+          <DefaultButton
+            type="button"
+            onClick={() => setMediaReqError(null)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm sm:text-base"
+          >
+            OK
+          </DefaultButton>
         </div>
       </dialog>
     </>

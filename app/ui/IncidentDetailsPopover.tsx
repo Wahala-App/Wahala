@@ -6,6 +6,7 @@ import { Incident } from "../api/types";
 import { PillButton, DefaultButton } from "./button";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { getToken } from "../actions/auth";
+import { inferMediaTypeFromUrl } from "../utils/mediaRequirements";
 
 interface IncidentDetailsPopoverProps {
   incident: Incident;
@@ -32,6 +33,7 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
     if (Number.isNaN(n)) return null;
     return Math.min(10, Math.max(1, n));
   })();
+  const evidenceIsVideo = inferMediaTypeFromUrl(evidenceImageUrl) === "video";
 
   const severityInfo =
     numericSeverity === null
@@ -230,22 +232,32 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         <div className="mx-4 mb-3 rounded-lg overflow-hidden border border-foreground/10">
           {isLoadingEvidence ? (
             <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
-              <span className="text-xs text-foreground/60">Loading image...</span>
+              <span className="text-xs text-foreground/60">Loading media...</span>
             </div>
           ) : evidenceImageUrl ? (
-            <img
-              src={evidenceImageUrl}
-              alt="Evidence"
-              className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setIsImageModalOpen(true)}
-              onError={(e) => {
-                console.error("Error loading evidence image:", evidenceImageUrl);
-                e.currentTarget.style.display = "none";
-              }}
-            />
+            evidenceIsVideo ? (
+              <video
+                src={evidenceImageUrl}
+                className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
+                controls
+                playsInline
+                onClick={() => setIsImageModalOpen(true)}
+              />
+            ) : (
+              <img
+                src={evidenceImageUrl}
+                alt="Evidence"
+                className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setIsImageModalOpen(true)}
+                onError={(e) => {
+                  console.error("Error loading evidence image:", evidenceImageUrl);
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )
           ) : (
             <div className="w-full h-48 flex items-center justify-center bg-foreground/5">
-              <span className="text-xs text-foreground/60">Failed to load image</span>
+              <span className="text-xs text-foreground/60">Failed to load media</span>
             </div>
           )}
         </div>
@@ -268,11 +280,20 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
             className="relative max-w-full max-h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={evidenceImageUrl}
-              alt="Evidence - Full size"
-              className="max-w-full max-h-[90vh] object-contain rounded-lg"
-            />
+            {evidenceIsVideo ? (
+              <video
+                src={evidenceImageUrl}
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                playsInline
+              />
+            ) : (
+              <img
+                src={evidenceImageUrl}
+                alt="Evidence - Full size"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            )}
           </div>
         </div>
       )}

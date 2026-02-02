@@ -152,7 +152,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ ok: true, incident_id: result.incident_id }, { status: 200 });
   } catch (error: any) {
     console.error('Error deleting update:', error);
-    const status = error?.type === 'auth' ? 403 : 500;
+    const status =
+      error?.type === 'auth'
+        ? 403
+        : error?.code === 'not_found' || error?.message === 'Update not found'
+          ? 404
+          : 500;
     return NextResponse.json(
       { error: error.message || 'Failed to delete update' },
       { status }
