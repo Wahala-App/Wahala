@@ -365,4 +365,53 @@ This creates:
 
 ---
 
-*Last Updated: January 28, 2026*
+## ✅ Additions & Fixes (February 2, 2026)
+
+### 1) Disprove (parallel to Live Updates)
+**Location**: `app/incident/[id]/IncidentFeedContent.tsx`, `app/api/updates/route.ts`, `app/actions/dataHandler.ts`, `migrations/add_incident_updates_kind.sql`
+
+- Added **Disprove** as an update type alongside normal live updates.
+- **Moderation rules**:
+  - Update authors can delete **their own** updates/disproves.
+  - Pin creator can delete **normal live updates only** (cannot delete disproves).
+- Added **delete confirmation modal** before deleting an update/disprove.
+- Added `incident_updates.kind` (`update | disprove`) and `decrement_update_count()` for correct count maintenance.
+
+### 2) Severity-based media requirements + video support
+**Location**: `app/ui/IncidentDialog.tsx`, `app/report/create/page.tsx`, `app/incident/[id]/IncidentFeedContent.tsx`, `app/utils/mediaRequirements.ts`
+
+- **Incident creation evidence is now required** based on severity:
+  - Severity **≤ 5**: requires **picture** (max **4MB**)
+  - Severity **> 5**: requires **video** (max **50MB**)
+- **Live update/disprove media is now required** based on severity:
+  - Severity **≤ 5**: requires **picture** (max **5MB**)
+  - Severity **> 5**: requires **video** (max **50MB**)
+- Added user-facing **popup modal** blocking submit when requirements aren’t met.
+- Added **video support** for live updates: pick, preview, upload to S3, and render as `<video>`.
+
+### 3) Backward-compatible media rendering (fallback)
+**Location**: `app/incident/[id]/IncidentFeedContent.tsx`, `app/ui/IncidentDetailsPopover.tsx`, `app/utils/mediaRequirements.ts`
+
+- Fixed old incidents/updates rendering as video incorrectly by **inferring media type from URL extension** (fallback to image), so previously uploaded images still render correctly even if severity is high.
+
+### 4) Cache-first pins + persistent login (mobile-like)
+**Location**: `app/actions/auth.ts`, `src/contexts/AuthContext.tsx`, `app/home/home.tsx`, `app/utils/authCache.ts`, `app/utils/pinsCache.ts`
+
+- Auth now persists across browser restarts via Firebase **`browserLocalPersistence`** (mobile-like).
+- Cached user profile in `localStorage` for fast startup; refreshes in background from `/api/user`.
+- Cached pins list in `localStorage`:
+  - Load cached pins instantly on startup, then refresh from `/api/dataHandler`.
+  - Cache kept in sync on realtime pin INSERT/UPDATE/DELETE and manual delete.
+
+### 5) UI fixes / polish
+**Location**: `app/home/home.tsx`, `app/home/SearchAndAdd.tsx`, `app/incident/[id]/IncidentFeedContent.tsx`
+
+- Replaced Home header info-circle with the **Wahala logo** and aligned it with the title.
+- Fixed desktop “+ REPORT INCIDENT” button in sidebar: it now opens the **report modal** (previously navigated to a mobile-only page).
+- Improved Disprove UI:
+  - Toggle integrated into severity row (no separate line)
+  - Disprove badge pill styled **green background + black text**
+
+---
+
+*Last Updated: February 2, 2026*

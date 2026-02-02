@@ -766,7 +766,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
           {/* Avatar Column */}
           <div className="flex flex-col items-center flex-shrink-0 w-10">
             {/* Parent Avatar: w-10 (40px) */}
-            <div className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-base font-bold text-foreground z-10 ring-4 ring-background border border-foreground/10">
+            <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center text-base font-bold text-foreground z-10 ring-4 ring-background border border-foreground/10">
               {incident.authorInitial}
             </div>
             {/* Vertical Line Start: 
@@ -835,7 +835,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
               Runs from top of updates container to the very bottom.
               Position: Left 19px (Aligned with parent avatar center).
           */}
-          <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-foreground/10 -z-10" />
+          <div className="absolute left-[19px] top-0 bottom-0 w-[2px] bg-foreground/10 z-0" />
 
           {updates.map((update, index) => {
             const isLast = index === updates.length - 1;
@@ -856,17 +856,19 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                     Width: 26px (Reaches from rail at 19px to avatar at ~45px).
                     Rounded Bottom Left: Creates the L-curve.
                 */}
+                {/* Shorter so the curve clearly stops before the avatar circle */}
                 <div className="absolute left-[19px] top-0 h-[20px] w-[26px] border-b-[2px] border-l-[2px] border-foreground/10 rounded-bl-xl z-0" />
 
                 {/* === CHILD AVATAR === */}
                 <div className="relative z-10 flex-shrink-0 ml-[45px] mt-[4px]"> 
-                  <div className="w-8 h-8 rounded-full bg-foreground/5 border-2 border-background flex items-center justify-center text-xs font-bold text-foreground shadow-sm">
+                  {/* Opaque avatar so rail doesn't show through */}
+                  <div className="w-8 h-8 rounded-full bg-background border-2 border-background flex items-center justify-center text-xs font-bold text-foreground shadow-sm ring-1 ring-foreground/10">
                     {update.initial}
                   </div>
                 </div>
 
                 {/* === CONTENT === */}
-                <div className="flex-1 ml-3 pt-1">
+                  <div className="relative z-10 flex-1 ml-3 pt-1">
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-sm font-bold text-foreground">{update.author}</span>
                     <span className="text-xs text-foreground/40">{update.timeAgo}</span>
