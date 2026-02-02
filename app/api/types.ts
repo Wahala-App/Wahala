@@ -40,5 +40,6 @@ export interface IncidentUpdate {
   body: string;
   severity: number;
   media_url?: string;
+  kind?: "update" | "disprove";
   created_at: string;
 }

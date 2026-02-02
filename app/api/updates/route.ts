@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from '@/app/actions/auth';
-import { storeIncidentUpdate, retrieveIncidentUpdates, updateIncidentSeverity } from '@/app/actions/dataHandler';
+import { deleteIncidentUpdate, storeIncidentUpdate, retrieveIncidentUpdates, updateIncidentSeverity } from '@/app/actions/dataHandler';
 import { auth } from 'firebase-admin';
 import * as admin from 'firebase-admin';
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { incident_id, body: updateBody, severity, media_url } = body;
+    const { incident_id, body: updateBody, severity, media_url, kind } = body;
 
     // Validation
     if (!incident_id) {
@@ -90,13 +90,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'severity must be a number between 1 and 10' }, { status: 400 });
     }
 
+    const updateKind = (kind ?? 'update') as string;
+    if (updateKind !== 'update' && updateKind !== 'disprove') {
+      return NextResponse.json({ error: 'kind must be either update or disprove' }, { status: 400 });
+    }
+
     // Store the update
     const update = await storeIncidentUpdate(
       idToken,
       incident_id,
       updateBody,
       severityNum,
-      media_url
+      media_url,
+      updateKind as "update" | "disprove"
     );
 
     // Recalculate and update incident severity
@@ -113,6 +119,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: error.message || 'Failed to create update' },
       { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No idToken provided' }, { status: 401 });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+
+    // Verify user is authenticated
+    try {
+      await auth().verifyIdToken(idToken);
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const updateId = searchParams.get('update_id');
+
+    if (!updateId) {
+      return NextResponse.json({ error: 'update_id query parameter is required' }, { status: 400 });
+    }
+
+    const result = await deleteIncidentUpdate(idToken, updateId);
+
+    return NextResponse.json({ ok: true, incident_id: result.incident_id }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error deleting update:', error);
+    const status = error?.type === 'auth' ? 403 : 500;
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete update' },
+      { status }
     );
   }
 }

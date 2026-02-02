@@ -20,6 +20,8 @@ type MockUpdate = {
   timeAgo: string;
   body: string;
   severity: number;
+  creatorUid?: string;
+  kind?: "update" | "disprove";
   hasMedia?: boolean;
   mediaUrls?: string[];
 };
@@ -108,6 +110,8 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
 
   const [incident, setIncident] = useState(INCIDENT_DEMO);
   const [updates, setUpdates] = useState<MockUpdate[]>([]);
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
+  const [pinCreatorUid, setPinCreatorUid] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
   const updatesEndRef = useRef<HTMLDivElement>(null);
   const [evidenceImageUrl, setEvidenceImageUrl] = useState<string | null>(null);
@@ -115,6 +119,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
   // Update-related state
+  const [updateKind, setUpdateKind] = useState<"update" | "disprove">("update");
   const [updateSeverity, setUpdateSeverity] = useState(5);
   const [updateMediaFile, setUpdateMediaFile] = useState<File | null>(null);
   const [updateMediaUrl, setUpdateMediaUrl] = useState<string | null>(null);
@@ -240,6 +245,8 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
           timeAgo,
           body: update.body,
           severity: update.severity,
+          creatorUid: update.creator_uid,
+          kind: (update.kind ?? "update") as "update" | "disprove",
           hasMedia: !!update.media_url,
           mediaUrls: presignedMediaUrl ? [presignedMediaUrl] : undefined,
         };
@@ -272,6 +279,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
         }
 
         const data: any = await res.json();
+        setPinCreatorUid(data.creator_uid ?? null);
 
         const type =
           data.incidentType ||
@@ -371,6 +379,27 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
 
     loadIncident();
   }, [incidentId]);
+
+  // Fetch current user uid (used for delete permissions)
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const idToken = await getToken();
+        if (!idToken) return;
+        const res = await fetch("/api/user", {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+        if (!res.ok) return;
+        const me: any = await res.json();
+        setCurrentUserUid(me?.uid ?? null);
+      } catch {
+        // ignore
+      }
+    };
+    loadMe();
+  }, []);
 
   // Fetch updates when incidentId changes
   useEffect(() => {
@@ -572,6 +601,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
           body: inputValue.trim(),
           severity: updateSeverity,
           media_url: mediaUrl || null,
+          kind: updateKind,
         }),
       });
 
@@ -583,10 +613,29 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
       // Success - clear form and refresh updates
       setInputValue("");
       setUpdateSeverity(5);
+      setUpdateKind("update");
       handleRemoveMedia();
       
       // Refresh updates from server
       await fetchUpdates();
+      // Refresh incident (to keep DB-severity/update_count in sync)
+      // (best-effort; if it fails we still show the new update in the list)
+      try {
+        const res = await fetch(`/api/dataHandler?id=${incidentId}`, {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+        if (res.ok) {
+          const data: any = await res.json();
+          setPinCreatorUid(data.creator_uid ?? null);
+          setIncident((prev) => ({
+            ...prev,
+            severity: data.severity ?? prev.severity,
+            evidence_url: data.evidence_url ?? prev.evidence_url,
+          }));
+        }
+      } catch {}
 
       // Scroll to top to see new update
       if (updatesEndRef.current) {
@@ -597,6 +646,58 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
       setPostError(error.message || 'Failed to post update. Please try again.');
     } finally {
       setIsPostingUpdate(false);
+    }
+  };
+
+  const canDeleteUpdate = (u: MockUpdate) => {
+    if (!currentUserUid) return false;
+    const isAuthor = !!u.creatorUid && u.creatorUid === currentUserUid;
+    const isPinCreator = !!pinCreatorUid && pinCreatorUid === currentUserUid;
+    const isNormalUpdate = (u.kind ?? "update") === "update";
+    return isAuthor || (isPinCreator && isNormalUpdate);
+  };
+
+  const handleDeleteUpdate = async (updateId: string) => {
+    try {
+      const idToken = await getToken();
+      if (!idToken) {
+        setPostError("Not authenticated. Please log in.");
+        return;
+      }
+
+      const res = await fetch(`/api/updates?update_id=${encodeURIComponent(updateId)}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to delete update");
+      }
+
+      await fetchUpdates();
+
+      // Best-effort refresh incident to reflect server-side severity/update_count
+      try {
+        const incidentRes = await fetch(`/api/dataHandler?id=${incidentId}`, {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+        if (incidentRes.ok) {
+          const data: any = await incidentRes.json();
+          setPinCreatorUid(data.creator_uid ?? null);
+          setIncident((prev) => ({
+            ...prev,
+            severity: data.severity ?? prev.severity,
+            evidence_url: data.evidence_url ?? prev.evidence_url,
+          }));
+        }
+      } catch {}
+    } catch (e: any) {
+      setPostError(e?.message || "Failed to delete update");
     }
   };
 
@@ -719,6 +820,22 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-sm font-bold text-foreground">{update.author}</span>
                     <span className="text-xs text-foreground/40">{update.timeAgo}</span>
+                      {(update.kind ?? "update") === "disprove" && (
+                        <span className="ml-1 inline-flex items-center rounded-full border border-emerald-600 bg-emerald-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-black">
+                          Disprove
+                        </span>
+                      )}
+                      {canDeleteUpdate(update) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUpdate(update.id)}
+                          className="ml-auto inline-flex items-center justify-center rounded-full p-1.5 text-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          aria-label="Delete update"
+                          title="Delete update"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                   </div>
                   
                   <p className="text-sm text-foreground/60 leading-relaxed mb-2">
@@ -748,18 +865,48 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
            <div className="w-full space-y-3">
               {/* Severity Input */}
               <div className="px-2">
-                <label className="block text-xs font-medium mb-1.5 text-foreground/60">
-                  Severity: <span className="font-semibold text-foreground">{updateSeverity}</span> -{" "}
-                  <span className={`font-semibold ${
-                    updateSeverity <= 3 ? 'text-emerald-500' :
-                    updateSeverity <= 6 ? 'text-amber-500' :
-                    updateSeverity <= 8 ? 'text-orange-500' : 'text-red-500'
-                  }`}>
-                    {updateSeverity <= 3 ? 'Low' :
-                     updateSeverity <= 6 ? 'Medium' :
-                     updateSeverity <= 8 ? 'High' : 'Critical'}
-                  </span>
-                </label>
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <div className="text-xs font-medium text-foreground/60">
+                    Severity: <span className="font-semibold text-foreground">{updateSeverity}</span> -{" "}
+                    <span className={`font-semibold ${
+                      updateSeverity <= 3 ? 'text-emerald-500' :
+                      updateSeverity <= 6 ? 'text-amber-500' :
+                      updateSeverity <= 8 ? 'text-orange-500' : 'text-red-500'
+                    }`}>
+                      {updateSeverity <= 3 ? 'Low' :
+                       updateSeverity <= 6 ? 'Medium' :
+                       updateSeverity <= 8 ? 'High' : 'Critical'}
+                    </span>
+                  </div>
+
+                  <div className="inline-flex rounded-full border border-foreground/10 bg-foreground/5 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setUpdateKind("update")}
+                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors ${
+                        updateKind === "update"
+                          ? "bg-foreground text-background"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
+                      aria-pressed={updateKind === "update"}
+                    >
+                      Live
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUpdateKind("disprove")}
+                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors ${
+                        updateKind === "disprove"
+                          ? "bg-foreground text-background"
+                          : "text-foreground/60 hover:text-foreground"
+                      }`}
+                      aria-pressed={updateKind === "disprove"}
+                      title="Disproves cannot be deleted by the pin creator"
+                    >
+                      Disprove
+                    </button>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-foreground/40">1</span>
                   <input
@@ -828,7 +975,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                         setInputValue(e.target.value);
                         setPostError(null);
                       }}
-                      placeholder="Add a live update..."
+                      placeholder={updateKind === "disprove" ? "Add a disprove..." : "Add a live update..."}
                       className="w-full bg-foreground/5 border border-foreground/10 rounded-full py-3 px-4 pl-4 pr-10 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-foreground/20 transition-all font-medium"
                       disabled={isPostingUpdate || isUploadingMedia}
                       />

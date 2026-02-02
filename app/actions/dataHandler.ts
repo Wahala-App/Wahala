@@ -294,7 +294,8 @@ export async function storeIncidentUpdate(
   incidentId: string,
   body: string,
   severity: number,
-  mediaUrl?: string
+  mediaUrl?: string,
+  kind: "update" | "disprove" = "update"
 ): Promise<IncidentUpdate> {
   try {
     const uid = await getAuthenticatedUser(idToken);
@@ -323,6 +324,7 @@ export async function storeIncidentUpdate(
           body: body.trim(),
           severity: Math.min(10, Math.max(1, severity)), // Clamp between 1-10
           media_url: mediaUrl || null,
+          kind,
           date_key: today,
           created_at: new Date().toISOString(),
         }
@@ -360,6 +362,90 @@ export async function storeIncidentUpdate(
     return data as IncidentUpdate;
   } catch (error) {
     console.error("Failed to store incident update", error);
+    throw error;
+  }
+}
+
+export async function deleteIncidentUpdate(idToken: string, updateId: string): Promise<{ incident_id: string }> {
+  try {
+    const requesterUid = await getAuthenticatedUser(idToken);
+
+    // Load update (need incident_id, creator_uid, kind)
+    const { data: updateRow, error: updateErr } = await supabase
+      .from('incident_updates')
+      .select('id, incident_id, creator_uid, kind')
+      .eq('id', updateId)
+      .maybeSingle();
+
+    if (updateErr || !updateRow) {
+      throw { type: "data", message: "Update not found" };
+    }
+
+    const incidentId = updateRow.incident_id as string;
+    const updateCreatorUid = updateRow.creator_uid as string;
+    const updateKind = (updateRow.kind as ("update" | "disprove") | null) ?? "update";
+
+    // Load incident pin creator
+    const { data: pinRow, error: pinErr } = await supabase
+      .from('location_pins')
+      .select('creator_uid')
+      .eq('id', incidentId)
+      .maybeSingle();
+
+    if (pinErr || !pinRow) {
+      throw { type: "data", message: "Incident not found" };
+    }
+
+    const pinCreatorUid = pinRow.creator_uid as string;
+
+    const isAuthor = requesterUid === updateCreatorUid;
+    const isPinCreator = requesterUid === pinCreatorUid;
+    const pinCreatorCanDelete = isPinCreator && updateKind === "update";
+
+    if (!isAuthor && !pinCreatorCanDelete) {
+      throw { type: "auth", message: "Not authorized to delete this update" };
+    }
+
+    // Delete the update row
+    const { error: deleteErr } = await supabase
+      .from('incident_updates')
+      .delete()
+      .eq('id', updateId);
+
+    if (deleteErr) {
+      console.error("Failed to delete incident update:", deleteErr);
+      throw { type: "data", message: `Failed to delete update: ${deleteErr.message}` };
+    }
+
+    // Decrement update_count
+    const { error: decErr } = await supabase.rpc('decrement_update_count', {
+      incident_id_param: incidentId
+    });
+
+    if (decErr) {
+      const { data: currentIncident } = await supabase
+        .from('location_pins')
+        .select('update_count')
+        .eq('id', incidentId)
+        .single();
+
+      const newCount = Math.max(0, (currentIncident?.update_count || 0) - 1);
+      await supabase
+        .from('location_pins')
+        .update({ update_count: newCount })
+        .eq('id', incidentId);
+    }
+
+    // Recalculate incident severity (both updates + disproves participate)
+    try {
+      await updateIncidentSeverity(idToken, incidentId);
+    } catch (e) {
+      console.error("Failed to recalculate severity after update deletion:", e);
+    }
+
+    return { incident_id: incidentId };
+  } catch (error) {
+    console.error("Failed to delete incident update", error);
     throw error;
   }
 }
