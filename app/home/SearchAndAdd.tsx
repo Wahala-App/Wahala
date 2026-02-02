@@ -235,7 +235,12 @@ export default function SearchAndAdd(
       {/* Quick Add at bottom */}
       <div className="p-6 border-t border-foreground/10 bg-background/80 backdrop-blur-md">
         <button
-          onClick={onCreateReport}
+          type="button"
+          onClick={() => {
+            // Desktop sidebar uses the in-page dialog (the /report/create page is mobile-only)
+            setDialogLocation(null); // null = use current location
+            openDialog();
+          }}
           className="w-full py-4 rounded-2xl bg-foreground text-background font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-foreground/10"
         >
           + Report Incident

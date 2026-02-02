@@ -736,7 +736,7 @@ useEffect(() => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Evidence Media{" "}
                 <span className="text-gray-500">
-                  (Required: {severity > 5 ? "Video" : "Picture"} · Max {severity > 5 ? "50MB" : "4MB"})
+                  (Severity ≤ 5: Picture (max 4MB) · Severity &gt; 5: Video (max 50MB))
                 </span>
               </label>
               <input

@@ -592,7 +592,7 @@ export default function CreateReportPage() {
             <label className="block text-sm font-medium mb-2">
               Evidence Media{" "}
               <span className="text-foreground/60">
-                (Required: {severity > 5 ? "Video" : "Picture"} · Max {severity > 5 ? "50MB" : "4MB"})
+                (Severity ≤ 5: Picture (max 4MB) · Severity &gt; 5: Video (max 50MB))
               </span>
             </label>
             <input
