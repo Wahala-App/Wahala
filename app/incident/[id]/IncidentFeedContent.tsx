@@ -430,6 +430,13 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
     }
   }, [incidentId, fetchUpdates]);
 
+  // Pin creator cannot disprove their own post; reset to "update" when they are the creator
+  useEffect(() => {
+    if (currentUserUid && pinCreatorUid && currentUserUid === pinCreatorUid && updateKind === "disprove") {
+      setUpdateKind("update");
+    }
+  }, [currentUserUid, pinCreatorUid, updateKind]);
+
   // Fetch presigned URL for evidence image
   useEffect(() => {
     const evidenceUrl = incident.evidence_url;
@@ -1018,19 +1025,21 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                     >
                       Live
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setUpdateKind("disprove")}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors ${
-                        updateKind === "disprove"
-                          ? "bg-foreground text-background"
-                          : "text-foreground/60 hover:text-foreground"
-                      }`}
-                      aria-pressed={updateKind === "disprove"}
-                      title="Disproves cannot be deleted by the pin creator"
-                    >
-                      Disprove
-                    </button>
+                    {!(currentUserUid && pinCreatorUid && currentUserUid === pinCreatorUid) && (
+                      <button
+                        type="button"
+                        onClick={() => setUpdateKind("disprove")}
+                        className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors ${
+                          updateKind === "disprove"
+                            ? "bg-foreground text-background"
+                            : "text-foreground/60 hover:text-foreground"
+                        }`}
+                        aria-pressed={updateKind === "disprove"}
+                        title="Disproves cannot be deleted by the pin creator"
+                      >
+                        Disprove
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

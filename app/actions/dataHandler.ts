@@ -345,12 +345,16 @@ export async function storeIncidentUpdate(
     // Verify incident exists
     const { data: incidentData, error: incidentError } = await supabase
       .from('location_pins')
-      .select('id')
+      .select('id, creator_uid')
       .eq('id', incidentId)
       .maybeSingle();
 
     if (incidentError || !incidentData) {
       throw { type: "data", message: "Incident not found" };
+    }
+
+    if (kind === "disprove" && incidentData?.creator_uid === uid) {
+      throw { type: "auth", message: "You cannot disprove your own post" };
     }
 
     // Get today's date for date_key

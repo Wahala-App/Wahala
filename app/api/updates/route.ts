@@ -116,6 +116,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(update, { status: 201 });
   } catch (error: any) {
     console.error('Error creating update:', error);
+    if (error?.type === 'auth') {
+      return NextResponse.json(
+        { error: error.message || 'Unauthorized' },
+        { status: 403 }
+      );
+    }
     return NextResponse.json(
       { error: error.message || 'Failed to create update' },
       { status: 500 }
