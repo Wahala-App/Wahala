@@ -400,7 +400,7 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
             <PillButton
               type="button"
               onClick={() => onViewFullReport(incident.id)}
-              className="flex-1 h-9 rounded-full text-xs sm:text-sm"
+              className="flex-1 h-9 rounded-full text-xs sm:text-sm whitespace-nowrap"
             >
               View full report
             </PillButton>
