@@ -114,19 +114,20 @@ export default function SearchAndAdd(
       {/* Tab Navigation */}
       <div className="flex border-b border-foreground/10 p-2 gap-1">
         {(["home", "reports", "alerts"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={clsx(
-              "flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize",
-              activeTab === tab
-                ? "bg-foreground text-background"
-                : "text-foreground/60 hover:bg-foreground/5"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={clsx(
+                "flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize",
+                activeTab === tab
+                  ? "bg-foreground text-background"
+                  : "text-foreground/60 hover:bg-foreground/5"
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar">

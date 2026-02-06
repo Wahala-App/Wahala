@@ -8,31 +8,37 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import getCurrLocation, {FALLBACK_LOCATION, incidentIcon,} from "./mapUtils";
-import {Incident} from "../api/types";
+import getCurrLocation, { FALLBACK_LOCATION, incidentIcon, sosIcon } from "./mapUtils";
+import { Incident } from "../api/types";
+import { SOSEvent } from "../api/types";
 import { DefaultButton } from "../ui/button";
+import { SOSButton } from "../ui/SOSButton";
 import Image from "next/image";
 import Loading from "./loading";
 import { getToken } from "@/app/actions/auth";
 
 
 interface MapRef {
-    recalibrateLocation: () => void;
-    addCustomMarker: (incident: Incident) => void;
-    refreshMarkers: () => void;
+  recalibrateLocation: () => void;
+  addCustomMarker: (incident: Incident) => void;
+  addSOSMarker: (sosEvent: SOSEvent) => void;
+  removeSOSMarker: (sosEventId: string) => void;
+  refreshMarkers: () => void;
 }
 
 interface MapProps {
-    onMarkerPrimaryClick?: (incidentId: string) => void;
-    onMarkerSecondaryClick?: (incidentId: string) => void;
-    onPositionClick?: (lat: number, lon: number) => void;
+  onMarkerPrimaryClick?: (incidentId: string) => void;
+  onMarkerSecondaryClick?: (incidentId: string) => void;
+  onPositionClick?: (lat: number, lon: number) => void;
+  onSOSMarkerClick?: (sosEvent: SOSEvent) => void;
 }
 
 // key = your custom ID, value = Marker instance
-const MapComponent = forwardRef<MapRef, MapProps> (({ onMarkerPrimaryClick, onMarkerSecondaryClick, onPositionClick }, ref) => {
+const MapComponent = forwardRef<MapRef, MapProps>(
+  ({ onMarkerPrimaryClick, onMarkerSecondaryClick, onPositionClick, onSOSMarkerClick }, ref) => {
   const markersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
-// Add this state at the top with other states
-const userLocationMarkerRef = useRef<Marker | null>(null);
+  const sosMarkersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
+  const userLocationMarkerRef = useRef<Marker | null>(null);
 
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
@@ -269,24 +275,46 @@ const userLocationMarkerRef = useRef<Marker | null>(null);
         incidents.forEach(incident => addCustomMarker(incident));
     }
 
-    const syncMarkers = (incidentToDeleteId: string) => { //Sync markers for deletion
-        console.log("Syncing markers for deletion:", incidentToDeleteId);
+    const syncMarkers = (incidentToDeleteId: string) => {
         const marker = markersRef.current.get(incidentToDeleteId);
-
-        console.log("Found marker to delete:", marker);
         if (!marker) return;
-
         marker.remove();
-
         markersRef.current.delete(incidentToDeleteId);
-        console.log("Marker removed and internal state updated.");
     };
 
-    
+    const addSOSMarker = (sosEvent: SOSEvent) => {
+      if (!mapRef.current || !sosEvent.id) return;
+      const key = `sos_${sosEvent.id}`;
+      if (sosMarkersRef.current.has(key)) return;
+
+      const el = sosIcon();
+      if (onSOSMarkerClick) {
+        el.addEventListener("click", () => onSOSMarkerClick(sosEvent));
+      }
+
+      const marker = new Marker({
+        element: el,
+        draggable: false,
+      })
+        .setLngLat([sosEvent.longitude, sosEvent.latitude])
+        .addTo(mapRef.current);
+      sosMarkersRef.current.set(key, marker);
+    };
+
+    const removeSOSMarker = (sosEventId: string) => {
+      const key = `sos_${sosEventId}`;
+      const marker = sosMarkersRef.current.get(key);
+      if (marker) {
+        marker.remove();
+        sosMarkersRef.current.delete(key);
+      }
+    };
 
   useImperativeHandle(ref, () => ({
     recalibrateLocation,
     addCustomMarker,
+    addSOSMarker,
+    removeSOSMarker,
     refreshMarkers,
     removeMarker,
     syncMarkers
@@ -361,6 +389,8 @@ const userLocationMarkerRef = useRef<Marker | null>(null);
         return () => {
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current.clear();
+            sosMarkersRef.current.forEach(marker => marker.remove());
+            sosMarkersRef.current.clear();
 
             mapRef.current?.remove();
             mapRef.current = null;
@@ -374,18 +404,19 @@ const userLocationMarkerRef = useRef<Marker | null>(null);
         <div id="map" className="w-full h-full overflow-hidden relative">
             {isInitializing && <Loading />}
 
-            <div className="z-1 absolute bottom-10 right-10">
-            <DefaultButton
+            <div className="z-1 absolute bottom-10 right-10 flex flex-col gap-3 items-end">
+              <SOSButton />
+              <DefaultButton
                 className="rounded-full px-3 py-3 bg-white dark:invert cursor-pointer"
                 onClick={() => recalibrateLocation()}
-            >
+              >
                 <Image
-                src={"/starLogo.svg"}
-                alt={"Location Logo"}
-                width={40}
-                height={40}
+                  src={"/starLogo.svg"}
+                  alt={"Location Logo"}
+                  width={40}
+                  height={40}
                 />
-            </DefaultButton>
+              </DefaultButton>
             </div>
         </div>
         </div>

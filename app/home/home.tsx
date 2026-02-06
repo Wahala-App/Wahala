@@ -6,7 +6,7 @@ import Image from "next/image";
 import SearchAndAdd from "./SearchAndAdd";
 import Loading from "./Loading";
 import MapComponent from "../map/map";
-import {Incident, Location, IncidentType} from "@/app/api/types";
+import { Incident, Location, IncidentType, SOSEvent } from "@/app/api/types";
 import { getToken, logout } from "../actions/auth";
 import { UserOval } from "./UserOval";
 import {supabase} from "../../lib/server/supabase";
@@ -20,6 +20,8 @@ import getCurrLocation from "../map/mapUtils";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { useTheme } from "@/src/contexts/ThemeContext";
 import { loadCachedPins, removePinFromCache, savePins, upsertPinInCache } from "../utils/pinsCache";
+import { SOSButton } from "../ui/SOSButton";
+import { SOSRecipientsSection } from "../ui/SOSRecipientsSection";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -28,8 +30,10 @@ export default function HomeComponent() {
   const mapRef = useRef<{
     recalibrateLocation: () => void;
     addCustomMarker: (incident: Incident) => void;
+    addSOSMarker: (sosEvent: SOSEvent) => void;
+    removeSOSMarker: (sosEventId: string) => void;
     refreshMarkers: () => void;
-    syncMarkers: (incidentId: any) => void;
+    syncMarkers: (incidentId: string) => void;
   }>(null);
 
   const addRef = useRef<{
@@ -51,6 +55,7 @@ export default function HomeComponent() {
   const [selectedIncidentType] = useState<IncidentType>(IncidentType.NONE);
 
   const [pins, setPins] = useState<Incident[]>([]);
+  const [sosEvents, setSosEvents] = useState<SOSEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -172,6 +177,34 @@ export default function HomeComponent() {
     [pins, selectedIncidentId]
   );
 
+  const [selectedSOSEvent, setSelectedSOSEvent] = useState<SOSEvent | null>(null);
+
+  const fetchSOSEvents = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const response = await fetch("/api/sos/events", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const events: SOSEvent[] = await response.json();
+        setSosEvents(Array.isArray(events) ? events : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch SOS events:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSOSEvents();
+  }, [fetchSOSEvents]);
+
+  useEffect(() => {
+    for (const event of sosEvents) {
+      mapRef.current?.addSOSMarker?.(event);
+    }
+  }, [sosEvents]);
+
    useEffect(() => {
     // Cache-first pins: show cached pins immediately, then refresh from API
     const cachedPins = loadCachedPins();
@@ -227,10 +260,22 @@ export default function HomeComponent() {
         }
       });
 
+    const sosChannel = supabase
+      .channel("sos_events_changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "sos_events" },
+        () => {
+          fetchSOSEvents();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(sosChannel);
     };
-  }, [refreshCount, fetchLocationPins]);
+  }, [refreshCount, fetchLocationPins, fetchSOSEvents]);
 
   // Recompute unread alerts whenever pins change
   useEffect(() => {
@@ -501,11 +546,12 @@ export default function HomeComponent() {
         {/* Map area */}
         <div className="flex-1 md:flex-[0.8] relative">
           <Suspense fallback={<Loading />}>
-            <MapComponent 
-              ref={mapRef} 
-              onMarkerPrimaryClick={handleMarkerPrimaryClick} 
-              onMarkerSecondaryClick={handleMarkerSecondaryClick} 
+            <MapComponent
+              ref={mapRef}
+              onMarkerPrimaryClick={handleMarkerPrimaryClick}
+              onMarkerSecondaryClick={handleMarkerSecondaryClick}
               onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}
+              onSOSMarkerClick={(event) => setSelectedSOSEvent((prev) => (prev?.id === event.id ? null : event))}
             />
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval
@@ -586,6 +632,64 @@ export default function HomeComponent() {
             />
           </div>
         </div>
+      )}
+
+      {/* SOS popover when user clicks SOS pin */}
+      {selectedSOSEvent && (
+        <>
+          <div className="hidden md:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 w-[320px] max-w-[90vw]">
+            <div className="bg-background border border-foreground/10 rounded-2xl shadow-xl p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white">
+                  <span className="text-xl">SOS</span>
+                </div>
+                <div>
+                  <div className="font-bold text-foreground">SOS Alert</div>
+                  {selectedSOSEvent.sender_username && (
+                    <div className="text-sm text-foreground/60">{selectedSOSEvent.sender_username}</div>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-foreground/80 mb-2">{selectedSOSEvent.description}</p>
+              <p className="text-xs text-foreground/50">
+                Location: {selectedSOSEvent.latitude.toFixed(5)}, {selectedSOSEvent.longitude.toFixed(5)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSelectedSOSEvent(null)}
+                className="mt-4 w-full py-2 rounded-xl bg-foreground/10 text-foreground font-semibold text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          <div className="md:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm flex items-end pb-14">
+            <div className="w-full px-4 pb-6 pt-4 bg-background rounded-t-3xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white">
+                  <span className="text-xl">SOS</span>
+                </div>
+                <div>
+                  <div className="font-bold text-foreground">SOS Alert</div>
+                  {selectedSOSEvent.sender_username && (
+                    <div className="text-sm text-foreground/60">{selectedSOSEvent.sender_username}</div>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-foreground/80 mb-2">{selectedSOSEvent.description}</p>
+              <p className="text-xs text-foreground/50">
+                Location: {selectedSOSEvent.latitude.toFixed(5)}, {selectedSOSEvent.longitude.toFixed(5)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setSelectedSOSEvent(null)}
+                className="mt-4 w-full py-3 rounded-xl bg-foreground/10 text-foreground font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Incident details popover/sheet from map pins */}
@@ -894,7 +998,11 @@ function HomeOverlayFlutter({
   );
 
   return (
-    <div className="h-full overflow-y-auto pb-24 pt-5">
+    <div className="relative h-full overflow-y-auto pb-24 pt-5">
+      {/* Floating SOS button - bottom-right for easy thumb reach on mobile */}
+      <div className="fixed bottom-24 right-5 z-50 md:hidden">
+        <SOSButton className="shadow-xl" />
+      </div>
       <div className="px-5">
         {showSearchBar ? <SearchHeader /> : <Header />}
 
@@ -1395,6 +1503,14 @@ function ProfileOverlay({
           Upgrade to Premium
         </button>
       </div>
+
+      {/* SOS Recipients */}
+      <SectionHeader>SOS CONTACTS</SectionHeader>
+      <Card>
+        <div className="p-4">
+          <SOSRecipientsSection />
+        </div>
+      </Card>
 
       {/* Account */}
       <SectionHeader>ACCOUNT</SectionHeader>

@@ -43,3 +43,20 @@ export interface IncidentUpdate {
   kind?: "update" | "disprove";
   created_at: string;
 }
+
+export interface SOSEvent {
+  id: string;
+  sender_uid: string;
+  latitude: number;
+  longitude: number;
+  description: string;
+  created_at: string;
+  sender_username?: string;
+}
+
+export interface SOSRecipient {
+  id: string;
+  user_uid: string;
+  recipient_email: string;
+  created_at: string;
+}

@@ -110,6 +110,46 @@ export function incidentIcon(incidentType: IncidentType): HTMLElement {
   return container;
 }
 
+export function sosIcon(): HTMLElement {
+  const container = document.createElement("div");
+  container.className = "sos-marker";
+  container.style.cssText = `
+    width: 40px;
+    height: 40px;
+    background-color: #dc2626;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    border: 2px solid white;
+  `;
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "24");
+  svg.setAttribute("height", "24");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "white");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.innerHTML = `
+    <circle cx="12" cy="13" r="8"/>
+    <path d="M12 9v4"/>
+    <path d="M12 17h.01"/>
+    <path d="m5 3 2 2"/>
+    <path d="m19 3 2 2"/>
+    <path d="m3 9 2 2"/>
+    <path d="m19 9 2 2"/>
+    <path d="m3 15 2 2"/>
+    <path d="m19 15 2 2"/>
+  `;
+  container.appendChild(svg);
+  return container;
+}
+
 function getIncidentColor(incidentType: IncidentType): string {
   switch (incidentType) {
     case IncidentType.ASSAULT:

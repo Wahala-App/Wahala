@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Shield, ChevronDown, LogOut, MapPin, User as UserIcon } from "lucide-react";
 import clsx from "clsx";
 import { useTheme } from "@/src/contexts/ThemeContext";
+import { SOSRecipientsSection } from "../ui/SOSRecipientsSection";
 
 interface UserOvalProps {
   recalibrate: () => void;
@@ -126,6 +127,13 @@ export const UserOval = ({
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Shield key={i} className="w-4 h-4 text-emerald-500 fill-emerald-500" />
                 ))}
+              </div>
+            </div>
+
+            {/* SOS Recipients Section */}
+            <div className="px-2 mb-2">
+              <div className="p-4 bg-foreground/5 rounded-2xl border border-foreground/5">
+                <SOSRecipientsSection />
               </div>
             </div>
 
