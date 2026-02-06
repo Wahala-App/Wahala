@@ -20,6 +20,8 @@ import getCurrLocation from "../map/mapUtils";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { useTheme } from "@/src/contexts/ThemeContext";
 import { loadCachedPins, removePinFromCache, savePins, upsertPinInCache } from "../utils/pinsCache";
+import { get } from "http";
+import maplibregl from "maplibre-gl";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -296,10 +298,38 @@ export default function HomeComponent() {
     await fetchAndUpdateLocation();
   };
 
-  const handlePinAddition = (lat: number, lon: number) => {
     // Open dialog with clicked location
-    setDialogLocation({ latitude: lat, longitude: lon });
-    setIsDialogOpen(true);
+  const handlePinAddition = async (lat: number, lon: number) => {
+    console.log("Pin add");
+    //First check distance from current location to prevent misinformation/spamming
+    let userCoords 
+    userCoords = await getCurrLocation()
+    // .then(
+    //         (currLocation) => {  
+    //             userCoords = currLocation;
+    //         }
+    //       );
+
+    if (userCoords === undefined || userCoords === null) {
+      console.log("User coordinates are undefined or null");
+      return;
+    }
+    const currLocation =  new maplibregl.LngLat(userCoords.longitude, userCoords.latitude);
+    const incidentLocation = new maplibregl.LngLat(lon, lat);
+    
+    const distanceThreshold = 1000; //Meters
+    const distanceToIncident = currLocation.distanceTo(incidentLocation); //Meters
+    
+    if ( distanceToIncident <= distanceThreshold) { //Meter
+
+        setDialogLocation({ latitude: lat, longitude: lon });
+        setIsDialogOpen(true);
+    }
+
+    console.log("Distance to incident (m): ", distanceToIncident);
+
+    //else ignore and do not open dialog
+
   }
 
   // ADD: Dialog submit handler
@@ -505,7 +535,7 @@ export default function HomeComponent() {
               ref={mapRef} 
               onMarkerPrimaryClick={handleMarkerPrimaryClick} 
               onMarkerSecondaryClick={handleMarkerSecondaryClick} 
-              onPositionClick={(lat: number, lon: number) => handlePinAddition(lat, lon)}
+              onPositionClick={async(lat: number, lon: number) => handlePinAddition(lat, lon)}
             />
             <div className="absolute top-4 right-4 z-10 text-black">
               <UserOval

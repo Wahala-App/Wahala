@@ -1,6 +1,6 @@
 "use client";
 
-import { AttributionControl, Map, Marker } from "maplibre-gl";
+import maplibregl, { AttributionControl, Map, Marker } from "maplibre-gl";
 import {
   useEffect,
   useRef,
@@ -86,17 +86,41 @@ const userLocationMarkerRef = useRef<Marker | null>(null);
   container.style.height = "70px";
 
   // Create pulsing ring
+  // Create pulsing ring with 1000m radius using MapLibre's projection
+  const center = new maplibregl.LngLat(location.longitude, location.latitude);
+
+  // Calculate a point 1000m north (bearing 0°)
+  const metersPerDegree = 111320; // approximate meters per degree of latitude
+  const latOffset = 1000 / metersPerDegree;
+  const northPoint = new maplibregl.LngLat(location.longitude, location.latitude + latOffset);
+
+  const centerPoint = mapRef.current.project(center);
+  const radiusPixelPoint = mapRef.current.project(northPoint);
+  const radiusInPixels = Math.abs(centerPoint.y - radiusPixelPoint.y);
+
   const pulseRing = document.createElement("div");
+  pulseRing.className = "pulse-ring";
   pulseRing.style.position = "absolute";
   pulseRing.style.top = "50%";
   pulseRing.style.left = "50%";
-  pulseRing.style.width = "60px";
-  pulseRing.style.height = "60px";
-  pulseRing.style.borderRadius = "50%";
-  pulseRing.style.border = "2px solid #4285F4";
+  pulseRing.style.width = `${radiusInPixels * 2}px`;
+  pulseRing.style.height = `${radiusInPixels * 2}px`;
+  pulseRing.style.borderRadius = "100%";
+  pulseRing.style.border = "4px solid #fb0000";
   pulseRing.style.transform = "translate(-50%, -50%)";
   pulseRing.style.animation = "pulse-ring 2s ease-out infinite";
+  pulseRing.style.pointerEvents = "none";
   container.appendChild(pulseRing);
+
+  // Update ring size on zoom
+  mapRef.current.on('zoom', () => {
+    const newCenterPoint = mapRef.current!.project(center);
+    const newRadiusPixelPoint = mapRef.current!.project(northPoint);
+    const newRadiusInPixels = Math.abs(newCenterPoint.y - newRadiusPixelPoint.y);
+    
+    pulseRing.style.width = `${newRadiusInPixels * 2}px`;
+    pulseRing.style.height = `${newRadiusInPixels * 2}px`;
+  });
 
   // Create stick figure container (BIGGER)
   const stickFigure = document.createElement("div");
