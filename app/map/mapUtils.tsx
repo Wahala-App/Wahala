@@ -1,9 +1,9 @@
 import { IncidentType, Location } from "../api/types";
 
-// Default fallback location: Statesboro, GA
+// Default fallback location: New York
 export const FALLBACK_LOCATION = {
-  latitude: 32.4173824,
-  longitude: -81.7856512,
+  latitude: 40.7128,
+  longitude: -74.006,
 };
 
 export default function getCurrLocation(): Promise<Location> {

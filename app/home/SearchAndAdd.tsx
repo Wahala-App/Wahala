@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Incident, Location, IncidentType } from "../api/types";
+import { Incident, Location, IncidentType, SOSEvent } from "../api/types";
 import { IncidentSearch } from "./IncidentSearch";
 import { QuickAdd } from "./QuickAdd";
 import { getToken } from "@/app/actions/auth";
@@ -19,7 +19,9 @@ interface SearchAndAddProps {
   userName: string;
   userLocation: string;
   pins: Incident[];
+  sosEvents?: SOSEvent[];
   onOpenDetails: (incidentId: string) => void;
+  onSOSAlertClick?: (event: SOSEvent) => void;
   onCreateReport: () => void;
   activeTab?: SearchAndAddTab;
   onTabChange?: (tab: SearchAndAddTab) => void;
@@ -37,7 +39,9 @@ export default function SearchAndAdd(
     userName,
     userLocation,
     pins,
+    sosEvents = [],
     onOpenDetails,
+    onSOSAlertClick,
     onCreateReport,
     activeTab: controlledTab,
     onTabChange,
@@ -75,6 +79,17 @@ export default function SearchAndAdd(
   const highlights = useMemo(() => getHighlights(pins), [pins]);
   const trends = useMemo(() => getTrends(pins, userLocation), [pins, userLocation]);
   const recentAlerts = useMemo(() => getRecentAlerts(pins), [pins]);
+
+  // Merge incidents + SOS events for alerts tab, sorted by date (newest first)
+  const allAlerts = useMemo(() => {
+    const incidentAlerts = recentAlerts.map((r) => ({ kind: "incident" as const, data: r }));
+    const sosAlerts = sosEvents.map((s) => ({ kind: "sos" as const, data: s }));
+    return [...incidentAlerts, ...sosAlerts].sort((a, b) => {
+      const tA = a.kind === "incident" ? (a.data as Incident).date_time : (a.data as SOSEvent).created_at;
+      const tB = b.kind === "incident" ? (b.data as Incident).date_time : (b.data as SOSEvent).created_at;
+      return new Date(tB || 0).getTime() - new Date(tA || 0).getTime();
+    });
+  }, [recentAlerts, sosEvents]);
 
   const buildCard = ({
     title,
@@ -198,11 +213,41 @@ export default function SearchAndAdd(
             <div className="text-xs font-black uppercase tracking-widest text-foreground/30">
               Live Notifications
             </div>
-            {recentAlerts.length === 0 ? (
+            {allAlerts.length === 0 ? (
               <div className="text-sm text-foreground/40 italic">No new alerts.</div>
             ) : (
               <div className="space-y-3">
-                {recentAlerts.map((r) => {
+                {allAlerts.map((item) => {
+                  if (item.kind === "sos") {
+                    const s = item.data as SOSEvent;
+                    const c = typeColor("SOS");
+                    return (
+                      <button
+                        key={`alert-sos-${s.id}`}
+                        onClick={() => onSOSAlertClick?.(s)}
+                        className="w-full text-left p-4 rounded-2xl bg-foreground/5 border border-foreground/5 hover:border-foreground/10 transition-all flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded text-white"
+                            style={{ backgroundColor: c }}
+                          >
+                            SOS
+                          </span>
+                          <span className="text-[10px] text-foreground/30 font-bold">
+                            {s.created_at ? new Date(s.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now"}
+                          </span>
+                        </div>
+                        <div className="text-sm font-bold text-foreground mt-1">
+                          SOS Alert {s.sender_username ? `from ${s.sender_username}` : ""}
+                        </div>
+                        <div className="text-xs text-foreground/60 line-clamp-2">
+                          {s.description}
+                        </div>
+                      </button>
+                    );
+                  }
+                  const r = item.data as Incident;
                   const t = typeOf(r);
                   return (
                     <button
@@ -215,7 +260,7 @@ export default function SearchAndAdd(
                           {t}
                         </span>
                         <span className="text-[10px] text-foreground/30 font-bold">
-                          {r.date_time ? new Date(r.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                          {r.date_time ? new Date(r.date_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now"}
                         </span>
                       </div>
                       <div className="text-sm font-bold text-foreground mt-1">

@@ -566,7 +566,9 @@ export default function HomeComponent() {
             userName={homeUserName}
             userLocation={homeLocation}
             pins={pins}
+            sosEvents={sosEvents}
             onOpenDetails={setSelectedIncidentId}
+            onSOSAlertClick={(event) => setSelectedSOSEvent(event)}
             onCreateReport={handleCreateReport}
             activeTab={desktopSidebarTab}
             onTabChange={setDesktopSidebarTab}
@@ -603,6 +605,7 @@ export default function HomeComponent() {
             userName={homeUserName}
             userLocation={homeLocation}
             pins={pins}
+            sosEvents={sosEvents}
             onOpenProfile={() => setActiveTab("profile")}
             onCreateReport={handleCreateReport}
             onOpenReports={handleOpenReportTab}
@@ -610,6 +613,10 @@ export default function HomeComponent() {
             onOpenMap={() => setActiveTab("map")}
             onOpenDetails={(incidentId) => {
               setSelectedIncidentId(incidentId);
+              setActiveTab("map");
+            }}
+            onSOSAlertClick={(event) => {
+              setSelectedSOSEvent(event);
               setActiveTab("map");
             }}
           />
@@ -621,10 +628,15 @@ export default function HomeComponent() {
         <div className="md:hidden fixed inset-0 z-40 bg-background">
           <AlertsOverlay
             pins={pins}
+            sosEvents={sosEvents}
             onOpenProfile={() => setActiveTab("profile")}
             onOpenReport={handleCreateReport}
             onOpenDetails={(incidentId) => {
               setSelectedIncidentId(incidentId);
+              setActiveTab("map");
+            }}
+            onSOSAlertClick={(event) => {
+              setSelectedSOSEvent(event);
               setActiveTab("map");
             }}
           />
@@ -892,22 +904,26 @@ function HomeOverlayFlutter({
   userName,
   userLocation,
   pins,
+  sosEvents = [],
   onOpenProfile,
   onCreateReport,
   onOpenReports,
   onOpenAlerts,
   onOpenMap,
   onOpenDetails,
+  onSOSAlertClick,
 }: {
   userName: string;
   userLocation: string;
   pins: Incident[];
+  sosEvents?: SOSEvent[];
   onOpenProfile: () => void;
   onCreateReport: () => void;
   onOpenReports: () => void;
   onOpenAlerts: () => void;
   onOpenMap: () => void;
   onOpenDetails: (incidentId: string) => void;
+  onSOSAlertClick?: (event: SOSEvent) => void;
 }) {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -963,6 +979,17 @@ function HomeOverlayFlutter({
   const highlights = getHighlights(pins);
   const trends = getTrends(pins, userLocation);
   const recentAlerts = getRecentAlerts(pins);
+
+  // Merge incidents + SOS for Latest Alerts, sorted by date (newest first)
+  const latestAlerts = useMemo(() => {
+    const incidentItems = recentAlerts.map((r) => ({ kind: "incident" as const, data: r }));
+    const sosItems = sosEvents.map((s) => ({ kind: "sos" as const, data: s }));
+    return [...incidentItems, ...sosItems].sort((a, b) => {
+      const tA = a.kind === "incident" ? (a.data as Incident).date_time : (a.data as SOSEvent).created_at;
+      const tB = b.kind === "incident" ? (b.data as Incident).date_time : (b.data as SOSEvent).created_at;
+      return new Date(tB || 0).getTime() - new Date(tA || 0).getTime();
+    });
+  }, [recentAlerts, sosEvents]);
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <div className="text-xl font-bold tracking-tight text-foreground">{children}</div>
@@ -1104,11 +1131,21 @@ function HomeOverlayFlutter({
             {/* Latest Alerts */}
             <SectionTitle>Latest Alerts</SectionTitle>
             <div className="h-4" />
-            {recentAlerts.length === 0 ? (
+            {latestAlerts.length === 0 ? (
               <div className="text-sm text-foreground/60">No recent alerts.</div>
             ) : (
               <div className="space-y-3">
-                {recentAlerts.map((r) => {
+                {latestAlerts.map((item) => {
+                  if (item.kind === "sos") {
+                    const s = item.data as SOSEvent;
+                    return buildCard({
+                      title: `SOS Alert${s.sender_username ? ` from ${s.sender_username}` : ""}`,
+                      subtitle: s.description || "SOS",
+                      type: "SOS",
+                      onClick: () => onSOSAlertClick?.(s),
+                    });
+                  }
+                  const r = item.data as Incident;
                   const t = typeOf(r);
                   return buildCard({
                     title: r.title,
@@ -1231,14 +1268,18 @@ function HomeOverlayFlutter({
 
 function AlertsOverlay({
   pins,
+  sosEvents = [],
   onOpenProfile,
   onOpenReport,
   onOpenDetails,
+  onSOSAlertClick,
 }: {
   pins: Incident[];
+  sosEvents?: SOSEvent[];
   onOpenProfile: () => void;
   onOpenReport: () => void;
   onOpenDetails: (incidentId: string) => void;
+  onSOSAlertClick?: (event: SOSEvent) => void;
 }) {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1246,20 +1287,42 @@ function AlertsOverlay({
 
   const types = Object.values(IncidentType).filter((t) => t !== IncidentType.NONE);
 
-  const filtered = pins
-    .filter((p) => {
-      if (selectedTypes.size === 0) return true;
-      const t = (p.incidentType || p.incident_type || "Other") as string;
-      return selectedTypes.has(t);
-    })
-    .filter((p) => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        p.title?.toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q)
-      );
+  // Merge pins + SOS events into a unified list, sorted by date (newest first)
+  const filtered = useMemo(() => {
+    const incidentItems = pins
+      .filter((p) => {
+        if (selectedTypes.size === 0) return true;
+        const t = (p.incidentType || p.incident_type || "Other") as string;
+        return selectedTypes.has(t);
+      })
+      .filter((p) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          p.title?.toLowerCase().includes(q) ||
+          (p.description ?? "").toLowerCase().includes(q)
+        );
+      })
+      .map((p) => ({ kind: "incident" as const, data: p }));
+    const sosItems = sosEvents
+      .filter((s) => {
+        if (selectedTypes.size > 0 && !selectedTypes.has("SOS")) return false;
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          "sos".includes(q) ||
+          (s.sender_username ?? "").toLowerCase().includes(q) ||
+          (s.description ?? "").toLowerCase().includes(q)
+        );
+      })
+      .map((s) => ({ kind: "sos" as const, data: s }));
+    const merged = [...incidentItems, ...sosItems].sort((a, b) => {
+      const tA = a.kind === "incident" ? (a.data as Incident).date_time : (a.data as SOSEvent).created_at;
+      const tB = b.kind === "incident" ? (b.data as Incident).date_time : (b.data as SOSEvent).created_at;
+      return new Date(tB || 0).getTime() - new Date(tA || 0).getTime();
     });
+    return merged;
+  }, [pins, sosEvents, selectedTypes, searchQuery]);
 
   const toggleType = (t: string) => {
     setSelectedTypes((prev) => {
@@ -1365,6 +1428,18 @@ function AlertsOverlay({
             })}
             <button
               type="button"
+              onClick={() => toggleType("SOS")}
+              className={clsx(
+                "h-9 px-4 rounded-full text-sm font-semibold border whitespace-nowrap",
+                selectedTypes.has("SOS")
+                  ? "bg-red-600 text-white border-transparent"
+                  : "bg-background border-foreground/10 text-foreground/80"
+              )}
+            >
+              SOS
+            </button>
+            <button
+              type="button"
               onClick={onOpenReport}
               className="h-9 px-4 rounded-full text-sm font-semibold border bg-background border-foreground/10 text-foreground/80 whitespace-nowrap"
             >
@@ -1381,7 +1456,56 @@ function AlertsOverlay({
             No alerts found.
           </div>
         ) : (
-          filtered.map((inc) => {
+          filtered.map((item) => {
+            if (item.kind === "sos") {
+              const s = item.data as SOSEvent;
+              const color = typeColor("SOS");
+              return (
+                <div
+                  key={`alert-sos-${s.id}`}
+                  className="rounded-2xl border border-foreground/10 p-4 bg-background"
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${color}22` }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-foreground/70">
+                        SOS
+                      </div>
+                      <div className="text-base font-bold mt-1">
+                        SOS Alert{s.sender_username ? ` from ${s.sender_username}` : ""}
+                      </div>
+                      {s.description && (
+                        <div className="text-sm text-foreground/70 mt-2 line-clamp-2">
+                          {s.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="text-xs text-foreground/60">
+                      {s.created_at ? new Date(s.created_at).toLocaleString() : "Just now"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onSOSAlertClick?.(s)}
+                      className="h-9 px-4 rounded-full border border-foreground/10 text-sm font-semibold"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            const inc = item.data as Incident;
             const t = (inc.incidentType || inc.incident_type || "Other") as string;
             const color = typeColor(t);
             return (

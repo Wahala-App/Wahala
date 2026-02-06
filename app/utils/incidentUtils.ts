@@ -5,6 +5,7 @@ export const typeOf = (inc: Incident) =>
 
 export const typeColor = (t: string) => {
   const k = t.toLowerCase();
+  if (k.includes("sos")) return "#dc2626";
   if (k.includes("robbery")) return "#ef4444";
   if (k.includes("assault")) return "#f97316";
   if (k.includes("theft")) return "#3b82f6";

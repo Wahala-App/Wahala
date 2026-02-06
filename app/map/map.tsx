@@ -55,7 +55,7 @@ const MapComponent = forwardRef<MapRef, MapProps>(
       console.log("📍 Location fetched:", location);
       
       // Check if we got the fallback location
-      if (location.latitude === 32.4173824 && location.longitude === -81.7856512) {
+      if (location.latitude === FALLBACK_LOCATION.latitude && location.longitude === FALLBACK_LOCATION.longitude) {
         console.warn("⚠️ Using fallback location - geolocation may have failed. Check browser permissions.");
       }
       
