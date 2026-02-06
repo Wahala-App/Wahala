@@ -144,7 +144,34 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
 
 ---
 
-### 6. UI/UX Improvements
+### 6. SOS (Emergency Alert) System
+**Location**: `app/ui/SOSButton.tsx`, `app/api/sos/route.ts`, `app/api/sos/events/route.ts`, `app/api/sos/recipients/route.ts`, `app/actions/sos.ts`, `app/ui/SOSRecipientsSection.tsx`, `app/utils/sosNotifier.ts`, `migrations/create_sos_tables.sql`
+
+Emergency SOS alert system for users in distress.
+
+#### Features:
+- **SOS Button**: Floating red button (mobile: bottom-right; alarm clock icon) to trigger an emergency alert.
+- **One-tap SOS**: Sends current GPS location to the server; creates an `sos_events` record.
+- **SOS Recipients**: Users can add trusted contacts (email) to receive notifications when they trigger SOS.
+- **SOS Events API**: `POST /api/sos` creates an event; `GET /api/sos/events` fetches events for display.
+- **Alerts Integration**: SOS events appear in the Alerts tab and Latest Alerts section alongside incidents.
+- **Map Integration**: SOS events can be displayed as markers on the map (when user taps "View Details").
+- **Recipient Notifications**: `sosNotifier` sends emails to configured recipients when SOS is triggered.
+
+#### Database:
+- `sos_events`: Stores each SOS trigger (sender_uid, latitude, longitude, description, created_at).
+- `sos_recipients`: Stores which emails receive SOS alerts per user.
+
+#### API Endpoints:
+- `POST /api/sos` - Create SOS event (latitude, longitude)
+- `GET /api/sos/events` - Retrieve SOS events
+- `GET /api/sos/recipients` - Get user's SOS recipients
+- `POST /api/sos/recipients` - Add SOS recipient
+- `DELETE /api/sos/recipients` - Remove SOS recipient
+
+---
+
+### 7. UI/UX Improvements
 
 #### Text Contrast Fixes
 - Improved text contrast in profile dropdown
@@ -229,6 +256,13 @@ Complete redesign of desktop sidebar and navigation to match mobile-first design
 3. `app/utils/addressCache.ts` - Address caching utility
 4. `app/api/getImageUrl/route.ts` - Presigned URL generation endpoint
 5. `migrations/create_incident_updates_table.sql` - Database migration script
+6. `app/api/sos/route.ts` - SOS event creation endpoint
+7. `app/api/sos/events/route.ts` - SOS events fetch endpoint
+8. `app/api/sos/recipients/route.ts` - SOS recipients CRUD
+9. `app/ui/SOSButton.tsx` - Emergency SOS button component
+10. `app/ui/SOSRecipientsSection.tsx` - Manage SOS notification recipients
+11. `app/utils/sosNotifier.ts` - Email notification for SOS recipients
+12. `migrations/create_sos_tables.sql` - SOS database migration
 
 ---
 
@@ -414,4 +448,38 @@ This creates:
 
 ---
 
-*Last Updated: February 2, 2026*
+## Additions & Fixes (February 6, 2026)
+
+### 1) Hashtag Subscription Feature
+**Location**: `app/utils/hashtagSubscriptions.ts`, `app/ui/HashtagChips.tsx`, `app/ui/HashtagSubscriptionsSection.tsx`, `app/home/SearchAndAdd.tsx`, `app/home/home.tsx`, `app/ui/IncidentDetailsPopover.tsx`, `app/incident/[id]/IncidentFeedContent.tsx`, `app/ui/IncidentDialog.tsx`, `app/report/create/page.tsx`, `app/actions/dataHandler.ts`, `app/api/types.ts`, `migrations/add_hashtags_to_location_pins.sql`
+
+- **Hashtag field on reports**: Users can add optional hashtags when creating an incident (comma- or space-separated, e.g. `#violence #election`).
+- **Hashtag display**: Hashtags shown as chips on incident details (popover and full report page).
+- **Subscribe from report details**: Tapping a hashtag on a report opens a confirmation dialog to subscribe.
+- **Alerts page – Hashtag Subscriptions section**:
+  - Type a hashtag to search; only hashtags that exist in reports are suggested.
+  - Click a suggestion to subscribe.
+  - Subscribed hashtags shown as chips (tap to unsubscribe).
+- **Home page – Reports from your subscribed hashtags**:
+  - New section above Trending Alerts / Recent Verified Alerts.
+  - Shows reports matching the user’s subscribed hashtags.
+  - Empty states: "Subscribe to hashtags in the Alerts tab..." or "No reports match your subscribed hashtags."
+- **Storage**: Subscriptions stored in `localStorage` (`wahala_hashtag_subscriptions`).
+- **Database**: Added `hashtags` column (`TEXT[]`) to `location_pins`.
+
+### 2) Block Pin Creator from Disproving Own Post
+**Location**: `app/actions/dataHandler.ts`, `app/api/updates/route.ts`, `app/incident/[id]/IncidentFeedContent.tsx`
+
+- Pin creators can no longer post a **disprove** on their own incident.
+- They can still post **live updates** with evidence.
+- **Backend**: `storeIncidentUpdate` rejects disproves when `uid === creator_uid`; returns 403 for auth-type errors.
+- **Frontend**: Disprove button hidden when the current user is the pin creator; `updateKind` resets to `"update"` when applicable.
+
+### 3) View Full Report Button Fix
+**Location**: `app/ui/IncidentDetailsPopover.tsx`
+
+- Added `whitespace-nowrap` so "View full report" label stays on a single line instead of wrapping.
+
+---
+
+*Last Updated: February 6, 2026*
