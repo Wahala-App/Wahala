@@ -40,6 +40,7 @@ export default function CreateReportPage() {
   const [addressMode, setAddressMode] = useState<"auto" | "manual">("auto");
   const [addressError, setAddressError] = useState<string>("");
 
+  const [hashtagsInput, setHashtagsInput] = useState("");
   const [validationErrors, setValidationErrors] = useState({
     title: false,
     description: false,
@@ -214,6 +215,7 @@ export default function CreateReportPage() {
     setAreaSize("building");
     setEvidenceFile(null);
     setFileError("");
+    setHashtagsInput("");
     setAddressInput("");
     setCurrentAddress(null);
     setAddressError("");
@@ -309,6 +311,11 @@ export default function CreateReportPage() {
         fileUrl = s3FileUrl;
       }
 
+      const parsedHashtags = hashtagsInput
+        .split(/[\s,]+/)
+        .map((s) => s.replace(/^#+/, "").trim().toLowerCase())
+        .filter(Boolean);
+
       const bodyData = {
         incidentType,
         title: title.trim(),
@@ -318,6 +325,7 @@ export default function CreateReportPage() {
         severity: severity.toString(),
         areaSize,
         evidenceUrl: fileUrl,
+        hashtags: parsedHashtags,
       };
 
       const response = await fetch("/api/dataHandler", {
@@ -482,6 +490,19 @@ export default function CreateReportPage() {
               placeholder="Additional details about the incident..."
               className="w-full p-2 border border-foreground/10 rounded-md bg-background resize-none"
               rows={3}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Hashtags <span className="text-foreground/50 font-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={hashtagsInput}
+              onChange={(e) => setHashtagsInput(e.target.value)}
+              placeholder="#violence #election (comma or space separated)"
+              className="w-full p-2 border border-foreground/10 rounded-md bg-background"
             />
           </div>
 

@@ -14,6 +14,8 @@ export interface Incident {
   // Number of live updates
   update_count?: number;
   date_time: string;
+  // Hashtags for tracking and subscription
+  hashtags?: string[];
 }
 
 export enum IncidentType {

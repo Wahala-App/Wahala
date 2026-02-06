@@ -15,7 +15,9 @@ import BottomNav, { BottomNavTab } from "../ui/BottomNav";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import IncidentDetailsPopover from "@/app/ui/IncidentDetailsPopover";
+import { HashtagSubscriptionsSection } from "@/app/ui/HashtagSubscriptionsSection";
 import { typeOf, typeColor, getHighlights, getRecentAlerts, getTrends } from "../utils/incidentUtils";
+import { getSubscribedHashtags } from "../utils/hashtagSubscriptions";
 import getCurrLocation from "../map/mapUtils";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { useTheme } from "@/src/contexts/ThemeContext";
@@ -980,6 +982,14 @@ function HomeOverlayFlutter({
   const trends = getTrends(pins, userLocation);
   const recentAlerts = getRecentAlerts(pins);
 
+  const subscribedHashtagPins = useMemo(() => {
+    const subscribed = new Set(getSubscribedHashtags());
+    if (subscribed.size === 0) return [];
+    return pins
+      .filter((p) => (p.hashtags || []).some((h) => subscribed.has(h.toLowerCase())))
+      .sort((a, b) => new Date(b.date_time || 0).getTime() - new Date(a.date_time || 0).getTime());
+  }, [pins]);
+
   // Merge incidents + SOS for Latest Alerts, sorted by date (newest first)
   const latestAlerts = useMemo(() => {
     const incidentItems = recentAlerts.map((r) => ({ kind: "incident" as const, data: r }));
@@ -1103,6 +1113,32 @@ function HomeOverlayFlutter({
                 </div>
               </button>
             </div>
+
+            <div className="h-8" />
+
+            {/* Reports from subscribed hashtags */}
+            <SectionTitle>Reports from your subscribed hashtags</SectionTitle>
+            <div className="h-4" />
+            {getSubscribedHashtags().length === 0 ? (
+              <div className="text-sm text-foreground/60">
+                Subscribe to hashtags in the Alerts tab to see reports here.
+              </div>
+            ) : subscribedHashtagPins.length === 0 ? (
+              <div className="text-sm text-foreground/60">
+                No reports match your subscribed hashtags.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {subscribedHashtagPins.map((r) =>
+                  buildCard({
+                    title: r.title,
+                    subtitle: `${userLocation || "Nearby"} • #${(r.hashtags || []).join(" #")}`,
+                    type: typeOf(r),
+                    onClick: () => onOpenDetails(r.id),
+                  })
+                )}
+              </div>
+            )}
 
             <div className="h-8" />
 
@@ -1287,6 +1323,12 @@ function AlertsOverlay({
 
   const types = Object.values(IncidentType).filter((t) => t !== IncidentType.NONE);
 
+  const existingHashtags = useMemo(() => {
+    const set = new Set<string>();
+    pins.forEach((p) => (p.hashtags || []).forEach((h) => set.add(h.toLowerCase())));
+    return Array.from(set);
+  }, [pins]);
+
   // Merge pins + SOS events into a unified list, sorted by date (newest first)
   const filtered = useMemo(() => {
     const incidentItems = pins
@@ -1450,7 +1492,7 @@ function AlertsOverlay({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {filtered.length === 0 ? (
           <div className="text-sm text-foreground/60 text-center mt-10">
             No alerts found.
@@ -1552,6 +1594,7 @@ function AlertsOverlay({
             );
           })
         )}
+        <HashtagSubscriptionsSection existingHashtags={existingHashtags} />
       </div>
     </div>
   );

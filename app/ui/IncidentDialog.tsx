@@ -22,6 +22,7 @@ interface IncidentDialogProps {
     severity?: number;
     areaSize?: string;
     evidenceFile?: File;
+    hashtags?: string[];
   }) => void;
   selectedIncidentType: IncidentType;
   providedLocation : Location | null;
@@ -66,6 +67,7 @@ export function IncidentDialog({
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [addressMode, setAddressMode] = useState<"auto" | "manual">("auto");
   const [addressError, setAddressError] = useState<string>("");
+  const [hashtagsInput, setHashtagsInput] = useState<string>("");
 
   useEffect(() => {
     if (dialogRef.current) {
@@ -362,6 +364,11 @@ useEffect(() => {
   }
 
   setIsSubmitting(true);
+  const parsedHashtags = hashtagsInput
+    .split(/[\s,]+/)
+    .map((s) => s.replace(/^#+/, "").trim().toLowerCase())
+    .filter(Boolean);
+
   onSubmit({
     incidentType,
     title: title.trim(),
@@ -370,6 +377,7 @@ useEffect(() => {
     severity,
     areaSize,
     evidenceFile: evidenceFile ?? undefined,
+    hashtags: parsedHashtags.length > 0 ? parsedHashtags : undefined,
   });
 
   try {
@@ -432,6 +440,7 @@ useEffect(() => {
       severity: severity.toString(),
       areaSize: areaSize,
       evidenceUrl: fileUrl, // Send the S3 URL, not the file
+      hashtags: parsedHashtags,
     };
 
     console.log("datersky", dateTime)
@@ -488,6 +497,7 @@ useEffect(() => {
     setAddressMode("auto");
     setIsLoadingAddress(false);
     setIsSubmitting(false);
+    setHashtagsInput("");
     setValidationErrors({
       title: false,
       description: false,
@@ -631,6 +641,19 @@ useEffect(() => {
                 placeholder="Additional details about the incident..."
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hashtags <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={hashtagsInput}
+                onChange={(e) => setHashtagsInput(e.target.value)}
+                placeholder="#violence #election (comma or space separated)"
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 

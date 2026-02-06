@@ -63,7 +63,8 @@ export async function storeLocationPin(
   dateTime: string,
   severity: string,
   areaSize: string,
-  evidenceUrl: string,
+  evidenceUrl: string | null,
+  hashtags?: string[],
 ) {
   try {
     const uid = await getAuthenticatedUser(idToken);
@@ -120,6 +121,7 @@ export async function storeLocationPin(
           severity: severity,
           area_size: areaSize,
           evidence_url: evidenceUrl,
+          hashtags: hashtags ?? [],
           date_key: today, // For quick filtering
           added_on: new Date().toISOString(),
         }

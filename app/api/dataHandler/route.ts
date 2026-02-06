@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
       body.dateTime,
       body.severity,
       body.areaSize,
-      body.evidenceUrl || null // Just pass the URL
+      body.evidenceUrl || null, // Just pass the URL
+      body.hashtags ?? []
     );
 
     console.log("Successfully stored incident");

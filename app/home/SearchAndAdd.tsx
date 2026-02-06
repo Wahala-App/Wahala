@@ -4,6 +4,8 @@ import { IncidentSearch } from "./IncidentSearch";
 import { QuickAdd } from "./QuickAdd";
 import { getToken } from "@/app/actions/auth";
 import { typeOf, typeColor, getHighlights, getTrends, getRecentAlerts } from "../utils/incidentUtils";
+import { getSubscribedHashtags } from "../utils/hashtagSubscriptions";
+import { HashtagSubscriptionsSection } from "../ui/HashtagSubscriptionsSection";
 import clsx from "clsx";
 
 type SearchAndAddTab = "home" | "reports" | "alerts";
@@ -79,6 +81,19 @@ export default function SearchAndAdd(
   const highlights = useMemo(() => getHighlights(pins), [pins]);
   const trends = useMemo(() => getTrends(pins, userLocation), [pins, userLocation]);
   const recentAlerts = useMemo(() => getRecentAlerts(pins), [pins]);
+  const existingHashtags = useMemo(() => {
+    const set = new Set<string>();
+    pins.forEach((p) => (p.hashtags || []).forEach((h) => set.add(h.toLowerCase())));
+    return Array.from(set);
+  }, [pins]);
+
+  const subscribedHashtagPins = useMemo(() => {
+    const subscribed = new Set(getSubscribedHashtags());
+    if (subscribed.size === 0) return [];
+    return pins
+      .filter((p) => (p.hashtags || []).some((h) => subscribed.has(h.toLowerCase())))
+      .sort((a, b) => new Date(b.date_time || 0).getTime() - new Date(a.date_time || 0).getTime());
+  }, [pins]);
 
   // Merge incidents + SOS events for alerts tab, sorted by date (newest first)
   const allAlerts = useMemo(() => {
@@ -161,6 +176,34 @@ export default function SearchAndAdd(
               </div>
             </div>
 
+            {/* Reports from subscribed hashtags */}
+            <div className="space-y-4">
+              <div className="text-xs font-black uppercase tracking-widest text-foreground/30">
+                Reports from your subscribed hashtags
+              </div>
+              <div className="space-y-3">
+                {getSubscribedHashtags().length === 0 ? (
+                  <div className="text-sm text-foreground/40 italic">
+                    Subscribe to hashtags in the Alerts tab to see reports here.
+                  </div>
+                ) : subscribedHashtagPins.length === 0 ? (
+                  <div className="text-sm text-foreground/40 italic">
+                    No reports match your subscribed hashtags.
+                  </div>
+                ) : (
+                  subscribedHashtagPins.map((r) => {
+                    const t = typeOf(r);
+                    return buildCard({
+                      title: r.title,
+                      subtitle: `${userLocation || "Nearby"} • #${(r.hashtags || []).join(" #")}`,
+                      type: t,
+                      onClick: () => onOpenDetails(r.id),
+                    });
+                  })
+                )}
+              </div>
+            </div>
+
             {/* Highlights */}
             <div className="space-y-4">
               <div className="text-xs font-black uppercase tracking-widest text-foreground/30">
@@ -209,15 +252,16 @@ export default function SearchAndAdd(
         )}
 
         {activeTab === "alerts" && (
-          <div className="p-6 space-y-4">
-            <div className="text-xs font-black uppercase tracking-widest text-foreground/30">
-              Live Notifications
-            </div>
-            {allAlerts.length === 0 ? (
-              <div className="text-sm text-foreground/40 italic">No new alerts.</div>
-            ) : (
-              <div className="space-y-3">
-                {allAlerts.map((item) => {
+          <div className="p-6 space-y-6">
+            <div>
+              <div className="text-xs font-black uppercase tracking-widest text-foreground/30">
+                Live Notifications
+              </div>
+              {allAlerts.length === 0 ? (
+                <div className="text-sm text-foreground/40 italic mt-3">No new alerts.</div>
+              ) : (
+                <div className="space-y-3 mt-3">
+                  {allAlerts.map((item) => {
                   if (item.kind === "sos") {
                     const s = item.data as SOSEvent;
                     const c = typeColor("SOS");
@@ -272,8 +316,10 @@ export default function SearchAndAdd(
                     </button>
                   );
                 })}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+            <HashtagSubscriptionsSection existingHashtags={existingHashtags} />
           </div>
         )}
       </div>

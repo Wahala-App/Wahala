@@ -8,6 +8,7 @@ import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { getToken } from "../actions/auth";
 import { inferMediaTypeFromUrl } from "../utils/mediaRequirements";
 import { shareReportLink } from "../utils/shareReportLink";
+import { HashtagChips } from "./HashtagChips";
 
 interface IncidentDetailsPopoverProps {
   incident: Incident;
@@ -250,6 +251,12 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         </p>
       )}
 
+      {(incident.hashtags && incident.hashtags.length > 0) && (
+        <div className="px-4 pb-2">
+          <HashtagChips hashtags={incident.hashtags} enableSubscribe />
+        </div>
+      )}
+
       {((incident as any).evidence_url && String((incident as any).evidence_url).trim() !== "") && (
         <div className="mx-4 mb-3 rounded-lg overflow-hidden border border-foreground/10">
           {isLoadingEvidence ? (
@@ -258,13 +265,21 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
             </div>
           ) : evidenceImageUrl ? (
             evidenceIsVideo ? (
-              <video
-                src={evidenceImageUrl}
-                className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
-                controls
-                playsInline
+              <div
+                className="w-full h-auto max-h-48 cursor-pointer hover:opacity-90 transition-opacity [&_video]:pointer-events-none"
                 onClick={() => setIsImageModalOpen(true)}
-              />
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setIsImageModalOpen(true)}
+                aria-label="Expand video to full screen"
+              >
+                <video
+                  src={evidenceImageUrl}
+                  className="w-full h-auto object-cover max-h-48"
+                  controls
+                  playsInline
+                />
+              </div>
             ) : (
               <img
                 src={evidenceImageUrl}

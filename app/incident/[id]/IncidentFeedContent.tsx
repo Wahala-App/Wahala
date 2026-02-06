@@ -12,6 +12,7 @@ import {
 import { getToken } from "@/app/actions/auth";
 import { getCachedAddress, setCachedAddress } from "@/app/utils/addressCache";
 import { shareReportLink } from "@/app/utils/shareReportLink";
+import { HashtagChips } from "@/app/ui/HashtagChips";
 import { IncidentUpdate } from "@/app/api/types";
 import { inferMediaTypeFromUrl, validateMediaForSeverity } from "@/app/utils/mediaRequirements";
 
@@ -47,6 +48,7 @@ const INCIDENT_DEMO = {
   author: "wahala-reports",
   evidence_url: undefined as string | undefined,
   severity: 8 as number | string,
+  hashtags: [] as string[],
 };
 
 const INITIAL_UPDATES: MockUpdate[] = [
@@ -390,6 +392,7 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
           author: data.creator_username || INCIDENT_DEMO.author,
           evidence_url: data.evidence_url || undefined,
           severity: data.severity ?? INCIDENT_DEMO.severity,
+          hashtags: data.hashtags ?? [],
         });
       } catch (err) {
         console.error("Error loading incident details", err);
@@ -827,6 +830,12 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
             <h2 className="text-lg font-bold leading-tight mb-2 text-foreground">{incident.title}</h2>
             <p className="text-sm text-foreground/60 leading-relaxed mb-3">{incident.description}</p>
             
+            {incident.hashtags && incident.hashtags.length > 0 && (
+              <div className="mb-3">
+                <HashtagChips hashtags={incident.hashtags} enableSubscribe />
+              </div>
+            )}
+            
             {incident.evidence_url && incident.evidence_url.trim() !== "" && (
               <div className="mt-3 mb-3 rounded-xl overflow-hidden border border-foreground/10 shadow-sm">
                 {isLoadingEvidence ? (
@@ -835,13 +844,21 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
                   </div>
                 ) : evidenceImageUrl ? (
                   incidentEvidenceIsVideo ? (
-                    <video
-                      src={evidenceImageUrl}
-                      className="w-full h-auto object-cover max-h-48 cursor-pointer hover:opacity-90 transition-opacity"
-                      controls
-                      playsInline
+                    <div
+                      className="w-full h-auto max-h-48 cursor-pointer hover:opacity-90 transition-opacity [&_video]:pointer-events-none"
                       onClick={() => setIsImageModalOpen(true)}
-                    />
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && setIsImageModalOpen(true)}
+                      aria-label="Expand video to full screen"
+                    >
+                      <video
+                        src={evidenceImageUrl}
+                        className="w-full h-auto object-cover max-h-48"
+                        controls
+                        playsInline
+                      />
+                    </div>
                   ) : (
                     <img
                       src={evidenceImageUrl}
