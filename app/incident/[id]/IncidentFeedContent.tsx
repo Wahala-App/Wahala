@@ -6,10 +6,12 @@ import {
   MapPin,
   Paperclip,
   Send,
+  Share2,
   X,
 } from "lucide-react";
 import { getToken } from "@/app/actions/auth";
 import { getCachedAddress, setCachedAddress } from "@/app/utils/addressCache";
+import { shareReportLink } from "@/app/utils/shareReportLink";
 import { IncidentUpdate } from "@/app/api/types";
 import { inferMediaTypeFromUrl, validateMediaForSeverity } from "@/app/utils/mediaRequirements";
 
@@ -131,6 +133,8 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
   const [isDeletingUpdate, setIsDeletingUpdate] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [isLoadingUpdates, setIsLoadingUpdates] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<"copied" | "shared" | null>(null);
+  const shareFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateMediaObjectUrlRef = useRef<string | null>(null);
 
@@ -138,6 +142,12 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
     id: string;
     kind: "update" | "disprove";
   } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareFeedbackTimeoutRef.current) clearTimeout(shareFeedbackTimeoutRef.current);
+    };
+  }, []);
 
   // Calculate average severity with time-decay weighting
   const averageSeverity = useMemo(() => {
@@ -755,7 +765,37 @@ export default function IncidentFeedContent({ onClose, isModal = false }: Incide
             </button>
             <h1 className="text-xs font-black uppercase tracking-widest text-foreground/40">Incident Feed</h1>
           </div>
-          <SeverityGauge average={averageSeverity} />
+          <div className="flex items-center gap-2">
+            {incidentId && (
+              <>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (shareFeedback) return;
+                    const result = await shareReportLink(incidentId, {
+                      title: incident.title,
+                      text: incident.description ? `${incident.title}. ${incident.description}` : undefined,
+                    });
+                    if (result === "copied" || result === "shared") {
+                      setShareFeedback(result === "copied" ? "copied" : "shared");
+                      shareFeedbackTimeoutRef.current = setTimeout(() => setShareFeedback(null), 2000);
+                    }
+                  }}
+                  className="p-1.5 hover:bg-foreground/10 rounded-full transition-colors disabled:opacity-50"
+                  aria-label="Share report"
+                  disabled={!!shareFeedback}
+                >
+                  <Share2 size={20} className="text-foreground" />
+                </button>
+                {shareFeedback && (
+                  <span className="text-[10px] font-medium text-foreground/60">
+                    {shareFeedback === "copied" ? "Link copied" : "Shared"}
+                  </span>
+                )}
+              </>
+            )}
+            <SeverityGauge average={averageSeverity} />
+          </div>
         </div>
       </header>
 

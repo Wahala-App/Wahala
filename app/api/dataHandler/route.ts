@@ -79,6 +79,13 @@ export async function POST(request: NextRequest) {
     console.log("Successfully stored incident");
     return NextResponse.json("Success", { status: 200 });
   } catch (error) {
+    const err = error as { type?: string; message?: string };
+    if (err.type === "rate_limit") {
+      return NextResponse.json(
+        { error: err.message ?? "Rate limit exceeded. Please wait before posting again." },
+        { status: 429 }
+      );
+    }
     console.error('Error storing incident:', error);
     return NextResponse.json({ error: error }, { status: 400 });
   }

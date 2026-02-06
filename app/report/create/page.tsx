@@ -330,6 +330,12 @@ export default function CreateReportPage() {
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          const data = await response.json().catch(() => ({}));
+          setMediaReqError(data.error ?? "Rate limit exceeded. Please wait before posting again.");
+          setShowConfirmation(false);
+          return;
+        }
         const errorText = await response.text();
         throw new Error(`Request failed: ${response.status} ${errorText}`);
       }

@@ -48,6 +48,11 @@ async function getAuthenticatedUser(idToken: string) {
   }
 }
 
+// Suggested cooldown values (see plan: Pin Posting Rate Limit)
+/** Blocks any second pin from the same user in quick succession (e.g. double-clicks). */
+const PIN_GLOBAL_COOLDOWN_SECONDS = 10;
+/** Same incident type cannot be posted again within this window. */
+const PIN_SAME_TYPE_COOLDOWN_SECONDS = 60;
 
 export async function storeLocationPin(
   idToken: string,
@@ -62,7 +67,40 @@ export async function storeLocationPin(
 ) {
   try {
     const uid = await getAuthenticatedUser(idToken);
-    
+
+    // Global cooldown: reject if user posted any pin very recently
+    const globalCutoff = new Date(Date.now() - PIN_GLOBAL_COOLDOWN_SECONDS * 1000).toISOString();
+    const { data: recentAny, error: globalErr } = await supabase
+      .from("location_pins")
+      .select("id")
+      .eq("creator_uid", uid)
+      .gt("added_on", globalCutoff)
+      .limit(1);
+
+    if (!globalErr && recentAny && recentAny.length > 0) {
+      throw {
+        type: "rate_limit",
+        message: `Please wait ${PIN_GLOBAL_COOLDOWN_SECONDS} seconds before posting another pin.`,
+      };
+    }
+
+    // Per-type cooldown: reject if user posted same incident_type recently
+    const sameTypeCutoff = new Date(Date.now() - PIN_SAME_TYPE_COOLDOWN_SECONDS * 1000).toISOString();
+    const { data: recentSameType, error: cooldownErr } = await supabase
+      .from("location_pins")
+      .select("id")
+      .eq("creator_uid", uid)
+      .eq("incident_type", incidentType)
+      .gt("added_on", sameTypeCutoff)
+      .limit(1);
+
+    if (!cooldownErr && recentSameType && recentSameType.length > 0) {
+      throw {
+        type: "rate_limit",
+        message: `Please wait ${PIN_SAME_TYPE_COOLDOWN_SECONDS} seconds before posting another ${incidentType} pin.`,
+      };
+    }
+
     console.log("date time, ", dateTime)
     // To ensure standard logged date using UTC for pins for the day
     const today = parseLocalTimestampToUTC(dateTime, 'date');
@@ -96,6 +134,8 @@ export async function storeLocationPin(
     console.log("Location pin saved successfully");
     return data;
   } catch (error) {
+    const err = error as { type?: string; message?: string };
+    if (err.type === "rate_limit") throw err;
     console.error("Failed to store location pin", error);
     throw { type: "data", message: `Failed to store location pin. Try again: ${error}` };
   }

@@ -48,6 +48,7 @@ export function IncidentDialog({
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
   const [mediaReqError, setMediaReqError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({
     title: false,
     description: false,
@@ -342,6 +343,8 @@ useEffect(() => {
   };
 
  const handleConfirmedSubmit = async () => {
+  if (isSubmitting) return;
+
   // Enforce severity-based evidence requirement
   const maxImageBytes = 4 * 1024 * 1024;
   const maxVideoBytes = 50 * 1024 * 1024;
@@ -358,6 +361,7 @@ useEffect(() => {
     return;
   }
 
+  setIsSubmitting(true);
   onSubmit({
     incidentType,
     title: title.trim(),
@@ -413,6 +417,7 @@ useEffect(() => {
         console.log('File uploaded successfully to S3:', fileUrl);
       } catch (uploadError) {
         console.error('Error uploading file:', uploadError);
+        setIsSubmitting(false);
         return;
       }
     }
@@ -443,18 +448,25 @@ useEffect(() => {
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        const data = await response.json().catch(() => ({}));
+        setMediaReqError(data.error ?? "Rate limit exceeded. Please wait before posting again.");
+        setShowConfirmation(false);
+        return;
+      }
       const errorText = await response.text();
       console.error('Request failed:', response.status, errorText);
       return;
     }
 
     console.log("Successfully stored pin data");
+    setShowConfirmation(false);
+    handleClose();
   } catch (err) {
     console.log("Handling Pin Addition Error: ", err);
+  } finally {
+    setIsSubmitting(false);
   }
-
-  setShowConfirmation(false);
-  handleClose();
 };
 
   const handleConfirmationNo = () => {
@@ -475,6 +487,7 @@ useEffect(() => {
     setAddressError("");
     setAddressMode("auto");
     setIsLoadingAddress(false);
+    setIsSubmitting(false);
     setValidationErrors({
       title: false,
       description: false,
@@ -796,9 +809,10 @@ useEffect(() => {
             <PillButton
               type="button"
               onClick={handleConfirmedSubmit}
+              disabled={isSubmitting}
               className="flex-1 rounded-md text-sm sm:text-base"
             >
-              Yes
+              {isSubmitting ? "Submitting..." : "Yes"}
             </PillButton>
           </div>
         </div>

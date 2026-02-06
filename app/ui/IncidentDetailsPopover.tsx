@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { MapPin, X, Eye } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { MapPin, Share2, X, Eye } from "lucide-react";
 import { Incident } from "../api/types";
 import { PillButton, DefaultButton } from "./button";
 import { getCachedAddress, setCachedAddress } from "../utils/addressCache";
 import { getToken } from "../actions/auth";
 import { inferMediaTypeFromUrl } from "../utils/mediaRequirements";
+import { shareReportLink } from "../utils/shareReportLink";
 
 interface IncidentDetailsPopoverProps {
   incident: Incident;
@@ -26,6 +27,8 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
   const [evidenceImageUrl, setEvidenceImageUrl] = useState<string | null>(null);
   const [isLoadingEvidence, setIsLoadingEvidence] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<"copied" | "shared" | null>(null);
+  const shareFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const numericSeverity = (() => {
     if (incident.severity === undefined || incident.severity === null) return null;
@@ -196,6 +199,25 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
     };
   }, [isImageModalOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (shareFeedbackTimeoutRef.current) clearTimeout(shareFeedbackTimeoutRef.current);
+    };
+  }, []);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (shareFeedback) return;
+    const result = await shareReportLink(incident.id, {
+      title: incident.title,
+      text: incident.description ?? undefined,
+    });
+    if (result === "copied" || result === "shared") {
+      setShareFeedback(result === "copied" ? "copied" : "shared");
+      shareFeedbackTimeoutRef.current = setTimeout(() => setShareFeedback(null), 2000);
+    }
+  };
+
   return (
     <div className="w-full rounded-2xl bg-background text-foreground shadow-xl border border-foreground/10">
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
@@ -340,22 +362,39 @@ const IncidentDetailsPopover: React.FC<IncidentDetailsPopoverProps> = ({
         </div>
       </div>
 
-      <div className="flex gap-2 border-t border-foreground/10 bg-background px-4 py-3">
-        <DefaultButton
-          type="button"
-          onClick={onClose}
-          className="flex-1 h-9 rounded-full text-xs sm:text-sm border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors"
-        >
-          Close
-        </DefaultButton>
-        {onViewFullReport && (
-          <PillButton
+      <div className="border-t border-foreground/10 bg-background px-4 py-3">
+        <div className="flex gap-2">
+          <DefaultButton
             type="button"
-            onClick={() => onViewFullReport(incident.id)}
-            className="flex-1 h-9 rounded-full text-xs sm:text-sm"
+            onClick={onClose}
+            className="flex-1 h-9 rounded-full text-xs sm:text-sm border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors"
           >
-            View full report
-          </PillButton>
+            Close
+          </DefaultButton>
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={!!shareFeedback}
+            className="flex items-center justify-center gap-1.5 h-9 px-3 rounded-full text-xs sm:text-sm border border-foreground/20 text-foreground hover:bg-foreground/5 transition-colors disabled:opacity-50"
+            aria-label="Share report"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </button>
+          {onViewFullReport && (
+            <PillButton
+              type="button"
+              onClick={() => onViewFullReport(incident.id)}
+              className="flex-1 h-9 rounded-full text-xs sm:text-sm"
+            >
+              View full report
+            </PillButton>
+          )}
+        </div>
+        {shareFeedback && (
+          <p className="mt-1.5 text-[10px] text-foreground/60 text-center">
+            {shareFeedback === "copied" ? "Link copied" : "Shared"}
+          </p>
         )}
       </div>
     </div>
