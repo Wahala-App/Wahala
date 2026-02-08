@@ -13,6 +13,7 @@ import { Incident } from "../api/types";
 import { SOSEvent } from "../api/types";
 import { DefaultButton } from "../ui/button";
 import { SOSButton } from "../ui/SOSButton";
+import { FilterButton } from "../ui/FilterButton";
 import Image from "next/image";
 import Loading from "./loading";
 import { getToken } from "@/app/actions/auth";
@@ -429,7 +430,9 @@ const MapComponent = forwardRef<MapRef, MapProps>(
             {isInitializing && <Loading />}
 
             <div className="z-1 absolute bottom-10 right-10 flex flex-col gap-3 items-end">
+               <FilterButton />
               <SOSButton />
+
               <DefaultButton
                 className="rounded-full px-3 py-3 bg-white dark:invert cursor-pointer"
                 onClick={() => recalibrateLocation()}

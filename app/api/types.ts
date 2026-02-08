@@ -16,6 +16,8 @@ export interface Incident {
   date_time: string;
   // Hashtags for tracking and subscription
   hashtags?: string[];
+  created_at: string;
+  updated_at: string;
 }
 
 export enum IncidentType {
