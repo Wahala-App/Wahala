@@ -25,6 +25,7 @@ import { loadCachedPins, removePinFromCache, savePins, upsertPinInCache } from "
 import { SOSButton } from "../ui/SOSButton";
 import { SOSRecipientsSection } from "../ui/SOSRecipientsSection";
 import maplibregl from "maplibre-gl";
+import { requestNotificationPermission, onForegroundMessage } from "../../lib/firebase";
 
 export default function HomeComponent() {
   const router = useRouter();
@@ -197,7 +198,31 @@ export default function HomeComponent() {
       console.error("Failed to fetch SOS events:", err);
     }
   }, []);
+  
+  // Inside HomeComponent, add this useEffect
+useEffect(() => {
+  // Request notification permission on mount
+  const setupNotifications = async () => {
+    const token = await requestNotificationPermission();
+    
+    if (token) {
+      console.log("FCM token obtained:", token);
+      // Optional: Save token to Supabase for targeted notifications later
+      // You can add this to your users table
+    }
+  };
 
+  setupNotifications();
+
+  // Listen for foreground messages (when app is open)
+  onForegroundMessage((payload) => {
+    // Show in-app notification or toast
+    alert(`${payload.notification.title}: ${payload.notification.body}`);
+    
+    // Or use a toast library like react-hot-toast:
+    // toast(payload.notification.body, { icon: '🔔' });
+  });
+}, []);
   useEffect(() => {
     fetchSOSEvents();
   }, [fetchSOSEvents]);
