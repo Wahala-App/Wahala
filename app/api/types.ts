@@ -28,6 +28,7 @@ export enum IncidentType {
   VANDALISM = "Vandalism",
   DRUG_OFFENSE = "Drug Offense",
   PUBLIC_INTOXICATION = "Public Intoxication",
+  ELECTION_MALPRACTICE = "Election Malpractice",
   OTHER = "Other",
 }
 

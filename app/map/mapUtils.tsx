@@ -75,6 +75,8 @@ export function incidentToIcon(incidentType: IncidentType): string {
       return "/crimeSpecialization/robbery.svg";
     case IncidentType.PUBLIC_INTOXICATION:
       return "/crimeSpecialization/alcohol.svg";
+      case IncidentType.ELECTION_MALPRACTICE:
+      return "/crimeSpecialization/election_malpractice.svg";
     default:
       return "/crimeSpecialization/default.svg";
   }
@@ -164,6 +166,8 @@ function getIncidentColor(incidentType: IncidentType): string {
       return "#b91c1c"; // red-700
     case IncidentType.PUBLIC_INTOXICATION:
       return "#0891b2"; // cyan-600
+    case IncidentType.ELECTION_MALPRACTICE:
+      return "#0aad05"; // emerald-600
     default:
       return "#6b7280"; // gray-500
   }

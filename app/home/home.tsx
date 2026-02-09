@@ -822,6 +822,7 @@ function ReportOverlay({
     IncidentType.VANDALISM,
     IncidentType.DRUG_OFFENSE,
     IncidentType.PUBLIC_INTOXICATION,
+    IncidentType.ELECTION_MALPRACTICE,
     IncidentType.OTHER,
   ];
 
