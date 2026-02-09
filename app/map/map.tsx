@@ -17,7 +17,7 @@ import { FilterButton } from "../ui/FilterButton";
 import Image from "next/image";
 import Loading from "./loading";
 import { getToken } from "@/app/actions/auth";
-
+import { SearchBar } from "../ui/SearchBar";
 
 interface MapRef {
   recalibrateLocation: () => void;
@@ -25,6 +25,8 @@ interface MapRef {
   addSOSMarker: (sosEvent: SOSEvent) => void;
   removeSOSMarker: (sosEventId: string) => void;
   refreshMarkers: () => void;
+  syncMarkers: (incidentToDeleteId: string) => void; // 👈 Added type
+  flyToLocation: (lat: number, lon: number) => void; // 👈 NEW
 }
 
 interface MapProps {
@@ -40,7 +42,7 @@ const MapComponent = forwardRef<MapRef, MapProps>(
   const markersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
   const sosMarkersRef = useRef<globalThis.Map<string, Marker>>(new globalThis.Map());
   const userLocationMarkerRef = useRef<Marker | null>(null);
-
+  const searchMarkerRef = useRef<Marker | null>(null);
   const mapRef = useRef<Map | null>(null);
   const [currLocation, setCurrLocation] = useState<{
     latitude: number;
@@ -335,6 +337,48 @@ const MapComponent = forwardRef<MapRef, MapProps>(
       }
     };
 
+    // Add this function anywhere before useImperativeHandle (I put it after removeSOSMarker)
+    const flyToLocation = (lat: number, lon: number) => {
+      if (!mapRef.current) return;
+
+      // Remove previous search marker if exists
+      if (searchMarkerRef.current) {
+        searchMarkerRef.current.remove();
+      }
+
+      // Fly to the searched location
+      mapRef.current.flyTo({
+        center: [lon, lat],
+        zoom: 16,
+        duration: 2000,
+      });
+
+      // Create a custom search marker
+      const el = document.createElement("div");
+      el.className = "search-marker";
+      el.style.fontSize = "40px";
+      el.style.cursor = "pointer";
+      el.innerHTML = "📍";
+
+      const marker = new Marker({
+        element: el,
+        draggable: false,
+        anchor: "bottom",
+      })
+        .setLngLat([lon, lat])
+        .addTo(mapRef.current);
+
+      searchMarkerRef.current = marker;
+
+      // Optional: Remove search marker after 5 seconds
+      setTimeout(() => {
+        if (searchMarkerRef.current) {
+          searchMarkerRef.current.remove();
+          searchMarkerRef.current = null;
+        }
+      }, 5000);
+    };
+
   useImperativeHandle(ref, () => ({
     recalibrateLocation,
     addCustomMarker,
@@ -342,7 +386,8 @@ const MapComponent = forwardRef<MapRef, MapProps>(
     removeSOSMarker,
     refreshMarkers,
     removeMarker,
-    syncMarkers
+    syncMarkers,
+    flyToLocation,
   }));
 
   const initializeMap = async () => {
@@ -416,6 +461,11 @@ const MapComponent = forwardRef<MapRef, MapProps>(
             markersRef.current.clear();
             sosMarkersRef.current.forEach(marker => marker.remove());
             sosMarkersRef.current.clear();
+            
+            // 👇 NEW - Cleanup search marker
+        if (searchMarkerRef.current) {
+            searchMarkerRef.current.remove();
+        }
 
             mapRef.current?.remove();
             mapRef.current = null;
@@ -428,6 +478,18 @@ const MapComponent = forwardRef<MapRef, MapProps>(
         <div className="h-full flex flex-col">
         <div id="map" className="w-full h-full overflow-hidden relative">
             {isInitializing && <Loading />}
+
+      
+       {/* Search Bar - Top, slightly left of center, smaller on mobile */}
+        {/* Search Bar - Top, slightly left of center, compact and semi-transparent */}
+        <div className="absolute top-3 left-[35%] -translate-x-1/2 z-10 w-[70%] sm:w-[55%] md:w-[100%] lg:w-100">
+          <SearchBar
+            onLocationSelect={(lat, lon, displayName) => {
+              flyToLocation(lat, lon);
+              console.log("Navigated to:", displayName);
+            }}
+          />
+        </div>
 
             <div className="z-1 absolute bottom-10 right-10 flex flex-col gap-3 items-end">
                <FilterButton />
@@ -449,5 +511,7 @@ const MapComponent = forwardRef<MapRef, MapProps>(
         </div>
     );
 });
+// At the very end, after the component closes
+MapComponent.displayName = "MapComponent"; // 👈 NEW (for React DevTools)
 
 export default MapComponent;

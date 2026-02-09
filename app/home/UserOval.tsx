@@ -54,29 +54,15 @@ export const UserOval = ({
     router.push("/login");
   };
 
-  return (
+    return (
     <div className="relative flex flex-col items-end gap-2">
-      {/* Premium Top Bar */}
-      <div className="flex items-center gap-2">
-        {/* Alerts Badge */}
-        <button 
-          className="relative w-10 h-10 rounded-full bg-background border border-foreground/10 flex items-center justify-center hover:bg-foreground/5 transition-all shadow-lg text-foreground"
-          aria-label="Alerts"
-          onClick={onOpenAlerts}
-        >
-          <Bell className="w-5 h-5" />
-          {alertCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-background">
-              {alertCount}
-            </span>
-          )}
-        </button>
-
+      {/* Premium Top Bar - Changes layout based on screen size */}
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
         {/* Profile Pill */}
         <button
           onClick={() => setIsDetailsOpened(!isDetailsOpened)}
           className={clsx(
-            "flex items-center gap-3 bg-background border border-foreground/10 pl-2 pr-4 py-1.5 rounded-full hover:border-foreground/20 transition-all shadow-lg group",
+            "flex items-center gap-3 bg-background border border-foreground/10 pl-2 pr-4 py-1.5 rounded-full hover:border-foreground/20 transition-all shadow-lg group order-1 md:order-2",
             isDetailsOpened && "border-foreground/30 ring-4 ring-foreground/5"
           )}
         >
@@ -93,6 +79,20 @@ export const UserOval = ({
               <ChevronDown className={clsx("w-3 h-3 transition-transform text-foreground/80", isDetailsOpened && "rotate-180")} />
             </div>
           </div>
+        </button>
+
+        {/* Alerts Badge - BELOW on mobile (left-aligned), LEFT of oval on desktop */}
+        <button 
+          className="relative w-10 h-10 rounded-full bg-background border border-foreground/10 flex items-center justify-center hover:bg-foreground/5 transition-all shadow-lg text-foreground order-2 md:order-1"
+          aria-label="Alerts"
+          onClick={onOpenAlerts}
+        >
+          <Bell className="w-5 h-5" />
+          {alertCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-background">
+              {alertCount}
+            </span>
+          )}
         </button>
       </div>
 
